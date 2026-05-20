@@ -1,5 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { db, auth } from './firebase.js';
+import { doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import './styles/global.css';
 
 // A ORDEM AQUI É IMPORTANTE! O components e o data precisam carregar antes.
@@ -7,6 +10,35 @@ import './components.jsx';
 import './data.jsx';
 import './pages-public.jsx';
 import './pages-admin.jsx';
+
+// Lista de termos ofensivos para auto-moderacao de comentarios
+const OFFENSIVE_TERMS = [
+  'crioulo','macaco fedorento','preto sujo','preto nojento',
+  'viado','viada','sapatao','sapatona','traveco','bicha fedida',
+  'baleia gorda','gordo nojento','gorda nojenta',
+  'nazista','nazi','heil hitler','sieg heil','ku klux','neonazista',
+  'te mato','vou te matar','morte para voce',
+  'judeu ladrao','mata judeu','matar judeu',
+  'faggot','nigger','kill yourself','kys',
+];
+const detectOffensive = (text) => {
+  const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ');
+  const n = norm(text || '');
+  return OFFENSIVE_TERMS.filter(t => n.includes(norm(t)));
+};
+
+const MASTER_EMAIL = 'keven.ferraz@mercadolivre.com';
+
+// Injeta dinamicamente uma fonte do Google Fonts se ainda não carregada
+function loadGoogleFont(name) {
+  const id = `gfont-${name.replace(/\s+/g, '-')}`;
+  if (document.getElementById(id)) return;
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;700&display=swap`;
+  document.head.appendChild(link);
+}
 
 // ============================================================
 // APP SHELL — gerencia navegação, estado e persistência
@@ -23,14 +55,15 @@ function App() {
     return saved ? JSON.parse(saved) : {};
   });
 
-  const [user, setUser] = React.useState(() => {
-    const saved = localStorage.getItem('deliricamente_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = React.useState(null);
 
   const [page, setPage] = React.useState('home');
   const [pageData, setPageData] = React.useState(null);
   const [mobileNav, setMobileNav] = React.useState(false);
+  const [bgConfig, setBgConfig] = React.useState({ style: 'blobs', speed: 1, density: 15, opacity: 0.85 });
+  const [carouselConfig, setCarouselConfig] = React.useState({ enabled: false, slides: [], autoPlay: true, interval: 5 });
+  const [heroLogoUrl, setHeroLogoUrl] = React.useState('');
+  const [navLogoUrl, setNavLogoUrl] = React.useState('https://i.ibb.co/nM8qGYxn/images-removebg-preview.png');
 
   // Persist to localStorage
   React.useEffect(() => {
@@ -41,13 +74,79 @@ function App() {
     localStorage.setItem('deliricamente_comments', JSON.stringify(comments));
   }, [comments]);
 
+  // Auth via Firebase — mantém sessão e cria/atualiza doc do usuario no Firestore
   React.useEffect(() => {
-    if (user) {
-      localStorage.setItem('deliricamente_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('deliricamente_user');
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        const isMaster = fbUser.email === MASTER_EMAIL;
+        setUser({
+          name: fbUser.displayName || fbUser.email.split('@')[0],
+          role: isMaster ? 'admin master' : 'editor',
+          email: fbUser.email,
+          uid: fbUser.uid,
+          isMaster,
+        });
+        try {
+          const docData = {
+            email: fbUser.email,
+            displayName: fbUser.displayName || fbUser.email.split('@')[0],
+            active: true,
+            photoUrl: fbUser.photoURL || '',
+            lastLogin: serverTimestamp(),
+          };
+          if (isMaster) docData.role = 'admin_master';
+          await setDoc(doc(db, 'users', fbUser.uid), docData, { merge: true });
+        } catch (e) {
+          console.warn('User doc:', e.message);
+        }
+      } else {
+        setUser(null);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Tema dinâmico via Firestore — propaga para todos os usuários em tempo real
+  React.useEffect(() => {
+    try {
+      const unsub = onSnapshot(doc(db, 'config', 'theme'), (snap) => {
+        if (!snap.exists()) return;
+        const t = snap.data();
+        const r = document.documentElement;
+        if (t.accent)      r.style.setProperty('--red',        t.accent);
+        if (t.background)  r.style.setProperty('--black',      t.background);
+        if (t.offWhite)    r.style.setProperty('--off-white',  t.offWhite);
+        if (t.panel)       r.style.setProperty('--panel',      t.panel);
+        if (t.gray)        r.style.setProperty('--gray',       t.gray);
+        if (t.muted)       r.style.setProperty('--muted',      t.muted);
+        if (t.paper)       r.style.setProperty('--paper',      t.paper);
+        if (t.textBody)    r.style.setProperty('--text-body',   t.textBody);
+        if (t.heroLogoUrl !== undefined) setHeroLogoUrl(t.heroLogoUrl || '');
+        if (t.navLogoUrl !== undefined) setNavLogoUrl(t.navLogoUrl || 'https://i.ibb.co/nM8qGYxn/images-removebg-preview.png');
+        if (t.fontDisplay) { loadGoogleFont(t.fontDisplay); r.style.setProperty('--font-display', `'${t.fontDisplay}', sans-serif`); }
+        if (t.fontBody)    { loadGoogleFont(t.fontBody);    r.style.setProperty('--font-body',    `'${t.fontBody}', sans-serif`); }
+        if (t.fontMono)    { loadGoogleFont(t.fontMono);    r.style.setProperty('--font-mono',    `'${t.fontMono}', monospace`); }
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Theme sync indisponível:', e.message);
     }
-  }, [user]);
+  }, []);
+
+  // Configs de fundo animado e carrossel em tempo real
+  React.useEffect(() => {
+    try {
+      const u1 = onSnapshot(doc(db, 'config', 'background'), (snap) => {
+        if (snap.exists()) setBgConfig(c => ({ ...c, ...snap.data() }));
+      });
+      const u2 = onSnapshot(doc(db, 'config', 'carousel'), (snap) => {
+        if (snap.exists()) setCarouselConfig(c => ({ ...c, ...snap.data() }));
+      });
+      return () => { u1(); u2(); };
+    } catch (e) {
+      console.warn('Config sync indisponível:', e.message);
+    }
+  }, []);
 
   // Navigation
   const go = (newPage, data = null) => {
@@ -63,13 +162,23 @@ function App() {
   };
 
   const addComment = (postId, comment) => {
+    const flaggedTerms = detectOffensive(comment.text || '');
+    const status = flaggedTerms.length > 0 ? 'flagged' : 'approved';
+    const newComment = {
+      ...comment,
+      status,
+      date: new Date().toISOString().slice(0, 10),
+      ...(flaggedTerms.length > 0 ? { flaggedTerms, flaggedAt: new Date().toISOString() } : {}),
+    };
     setComments(prev => ({
       ...prev,
-      [postId]: [...(prev[postId] || []), { ...comment, status: 'pending' }]
+      [postId]: [...(prev[postId] || []), newComment]
     }));
-    setPosts(prev => prev.map(p =>
-      p.id === postId ? { ...p, comments: p.comments + 1 } : p
-    ));
+    if (status === 'approved') {
+      setPosts(prev => prev.map(p =>
+        p.id === postId ? { ...p, comments: p.comments + 1 } : p
+      ));
+    }
   };
 
   // Like/reaction functions
@@ -86,7 +195,7 @@ function App() {
   };
 
   const logout = () => {
-    setUser(null);
+    signOut(auth);
     go('home');
   };
 
@@ -99,7 +208,10 @@ function App() {
         <nav className="nav">
           <div className="wrap nav-inner">
             <a className="nav-brand" onClick={() => go('home')} style={{ cursor: 'pointer' }}>
-              <window.LogoMark size={40} />
+              {navLogoUrl
+                ? <img src={navLogoUrl} alt="Logo" style={{ width: 40, height: 40, objectFit: 'contain', display: 'block' }} />
+                : <window.LogoMark size={40} />
+              }
               <div>
                 Deliricamente
                 <small>// CAIEIRAS · SP</small>
@@ -143,7 +255,7 @@ function App() {
   let content;
 
   if (page === 'home') {
-    content = <window.HomePage posts={posts} go={go} />;
+    content = <window.HomePage posts={posts} go={go} bgConfig={bgConfig} carouselConfig={carouselConfig} heroLogoUrl={heroLogoUrl} />;
   } else if (page === 'blog') {
     content = <window.BlogPage posts={posts} go={go} />;
   } else if (page === 'post') {

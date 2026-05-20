@@ -1,7 +1,9 @@
-import React from 'react';
+﻿import React from 'react';
+import { db } from './firebase.js';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 // Pegando componentes do window
-const { LogoMark, Splatter, Placeholder, Marquee, Btn, Icon } = window;
+const { LogoMark, Splatter, Placeholder, Marquee, Btn, Icon, AnimatedBackground, HeroCarousel } = window;
 const { SEED_POSTS, TIMELINE, GALLERY, AGENDA, COLLECTIVES } = window;
 
 /* ============================================================
@@ -18,11 +20,12 @@ function fmtDate(iso) {
 // ============================================================
 // HERO + MARQUEE
 // ============================================================
-function Hero({ go }) {
+function Hero({ go, bgConfig = {}, heroLogoUrl = "" }) {
+  const { style = 'blobs', speed = 1, density = 15, opacity = 0.85 } = bgConfig;
   return (
     <>
       <section className="hero">
-        <Splatter color="#E10600" opacity={0.85} />
+        <AnimatedBackground style={style} speed={speed} density={density} opacity={opacity} />
         <div className="wrap hero-grid">
           <div>
             <div className="hero-eyebrow">
@@ -55,7 +58,7 @@ function Hero({ go }) {
 
           <div className="hero-right">
             <div className="hero-logo-bg">
-              <LogoMark size={300} color="#0A0A0A" accent="#E10600" />
+              <LogoMark size={300} imageUrl={heroLogoUrl} />
               <div className="hero-stamp">
                 EPIFANIA<small>23 · 11 · 2024</small>
               </div>
@@ -98,7 +101,7 @@ function LatestPosts({ posts, go }) {
             <div className="post-cover">
               <span className="badge">{a.type}</span>
               <span className="date">{fmtDate(a.date).join(" · ")}</span>
-              <Placeholder label={a.cover.label} variant={a.cover.variant} />
+              {a.cover?.url ? <img src={a.cover.url} alt={a.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:(a.cover?.position ? 'center '+a.cover.position : 'center top'),display:'block'}} /> : <Placeholder label={a.cover?.label} variant={a.cover?.variant} />}
             </div>
             <div className="post-body">
               <div className="kicker">// post #{a.id.toUpperCase()}</div>
@@ -116,7 +119,7 @@ function LatestPosts({ posts, go }) {
             <div className="post-cover">
               <span className="badge">{b.type}</span>
               <span className="date">{fmtDate(b.date).join(" · ")}</span>
-              <Placeholder label={b.cover.label} variant={b.cover.variant} />
+              {b.cover?.url ? <img src={b.cover.url} alt={b.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:(b.cover?.position ? 'center '+b.cover.position : 'center top'),display:'block'}} /> : <Placeholder label={b.cover?.label} variant={b.cover?.variant} />}
             </div>
             <div className="post-body">
               <div className="kicker">// post #{b.id.toUpperCase()}</div>
@@ -133,7 +136,7 @@ function LatestPosts({ posts, go }) {
             <div className="post-cover">
               <span className="badge">{c.type}</span>
               <span className="date">{fmtDate(c.date).join(" · ")}</span>
-              <Placeholder label={c.cover.label} variant={c.cover.variant} />
+              {c.cover?.url ? <img src={c.cover.url} alt={c.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:(c.cover?.position ? 'center '+c.cover.position : 'center top'),display:'block'}} /> : <Placeholder label={c.cover?.label} variant={c.cover?.variant} />}
             </div>
             <div className="post-body">
               <h3>{c.title}</h3>
@@ -147,7 +150,7 @@ function LatestPosts({ posts, go }) {
             <div className="post-cover">
               <span className="badge">{d.type}</span>
               <span className="date">{fmtDate(d.date).join(" · ")}</span>
-              <Placeholder label={d.cover.label} variant={d.cover.variant} />
+              {d.cover?.url ? <img src={d.cover.url} alt={d.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:(d.cover?.position ? 'center '+d.cover.position : 'center top'),display:'block'}} /> : <Placeholder label={d.cover?.label} variant={d.cover?.variant} />}
             </div>
             <div className="post-body">
               <h3>{d.title}</h3>
@@ -309,11 +312,21 @@ function Footer({ go }) {
 // ============================================================
 // HOME PAGE
 // ============================================================
-function HomePage({ posts, go }) {
+function HomePage({ posts, go, bgConfig = {}, carouselConfig = {}, heroLogoUrl = "" }) {
+  const published = posts.filter(p => p.status === 'published');
+  const showCarousel = carouselConfig.enabled && (carouselConfig.slides || []).length > 0;
   return (
     <div className="page-enter">
-      <Hero go={go} />
-      <LatestPosts posts={posts.filter(p => p.status === "published").slice(0, 4)} go={go} />
+      <Hero go={go} bgConfig={bgConfig} heroLogoUrl={heroLogoUrl} />
+      {showCarousel && (
+        <HeroCarousel
+          slides={carouselConfig.slides}
+          autoPlay={carouselConfig.autoPlay !== false}
+          interval={carouselConfig.interval || 5}
+          go={go}
+        />
+      )}
+      <LatestPosts posts={published.slice(0, 4)} go={go} />
       <AGCSection go={go} />
       <Agenda />
     </div>
@@ -361,7 +374,7 @@ function BlogPage({ posts, go }) {
                 <div className="post-cover">
                   <span className="badge">{p.type}</span>
                   <span className="date">{fmtDate(p.date).join(" · ")}</span>
-                  <Placeholder label={p.cover.label} variant={p.cover.variant} />
+                  {p.cover?.url ? <img src={p.cover.url} alt={p.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:(p.cover?.position ? 'center '+p.cover.position : 'center top'),display:'block'}} /> : <Placeholder label={p.cover?.label} variant={p.cover?.variant} />}
                 </div>
                 <div className="post-body">
                   <h3>{p.title}</h3>
@@ -423,22 +436,63 @@ function PostPage({ postId, posts, go, getComments, addComment, toggleLike }) {
           </div>
         </div>
 
-        <div className="post-cover-big">
-          <Placeholder label={post.cover.label} variant={post.cover.variant} />
+        <div className="post-cover-big" style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
+          {post.cover?.url ? (
+            <>
+              {/* Fundo embaçado preenche o espaco sem cortar o conteudo principal */}
+              <img aria-hidden="true" src={post.cover.url} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',filter:'blur(28px) brightness(0.35)',transform:'scale(1.12)',zIndex:0}} />
+              {/* Imagem principal em tamanho real, sem distorcao */}
+              <img src={post.cover.url} alt={post.title} style={{position:'relative',zIndex:1,maxWidth:'100%',maxHeight:'100%',objectFit:'contain',display:'block'}} />
+            </>
+          ) : (
+            <Placeholder label={post.cover?.label} variant={post.cover?.variant} />
+          )}
         </div>
 
         <div className="post-content">
           <article>
             {post.body.map((blk, i) => {
-              if (blk.kind === "p") return <p key={i}>{blk.text}</p>;
+              // Renderiza inline markdown: **bold**, *italic*, ~~strike~~
+              const md = (txt) => {
+                if (!txt) return txt;
+                const parts = []; let rest = txt;
+                const re = /(\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~)/g;
+                let last = 0, m;
+                while ((m = re.exec(txt)) !== null) {
+                  if (m.index > last) parts.push(txt.slice(last, m.index));
+                  if (m[2]) parts.push(<strong key={m.index}>{m[2]}</strong>);
+                  else if (m[3]) parts.push(<em key={m.index} style={{fontStyle:'italic',color:'inherit'}}>{m[3]}</em>);
+                  else if (m[4]) parts.push(<s key={m.index}>{m[4]}</s>);
+                  last = m.index + m[0].length;
+                }
+                if (last < txt.length) parts.push(txt.slice(last));
+                return parts.length > 1 ? parts : txt;
+              };
+              if (blk.kind === "p") return <p key={i}>{md(blk.text)}</p>;
               if (blk.kind === "h2") return <h2 key={i}>{blk.text}</h2>;
-              if (blk.kind === "quote") return <blockquote key={i}>“{blk.text}”</blockquote>;
-              if (blk.kind === "ul") return <ul key={i}>{blk.items.map((it,j)=><li key={j}>{it}</li>)}</ul>;
-              if (blk.kind === "embed") return (
-                <div className="embed" key={i}>
-                  <Placeholder label={blk.label || "VIDEO · YOUTUBE EMBED"} />
-                </div>
-              );
+              if (blk.kind === "quote") return <blockquote key={i}>{md(blk.text)}</blockquote>;
+              if (blk.kind === "ul") return <ul key={i}>{blk.items.map((it,j)=><li key={j}>{md(it)}</li>)}</ul>;
+              if (blk.kind === "embed") {
+                const raw = blk.url || blk.label || '';
+                const ytMatch = raw.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+                const ytId = ytMatch ? ytMatch[1] : null;
+                return (
+                  <div className="embed" key={i} style={{position:'relative',paddingBottom:'56.25%',height:0,overflow:'hidden',margin:'2rem 0'}}>
+                    {ytId
+                      ? <iframe
+                          src={'https://www.youtube.com/embed/' + ytId}
+                          title="Video embed"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',border:'none'}}
+                        />
+                      : <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'var(--panel)',fontFamily:'var(--font-mono)',color:'var(--muted)',fontSize:'0.85rem'}}>
+                          // URL inválida: {raw}
+                        </div>
+                    }
+                  </div>
+                );
+              }
               return null;
             })}
 
@@ -475,14 +529,14 @@ function PostPage({ postId, posts, go, getComments, addComment, toggleLike }) {
 
           <aside className="post-aside">
             <div className="reaction-bar">
-              <button className={"reaction-btn " + (liked ? "active" : "")} onClick={()=>{setLiked(!liked); toggleLike(post.id,"likes",!liked);}}>
+              <button className={"reaction-btn " + (liked ? "active" : "")} onClick={()=>{ if (!liked) { setLiked(true); toggleLike(post.id,"likes",true); } }}>
                 <Icon.Heart />
-                <span className="num">{post.likes + (liked ? 1 : 0)}</span>
+                <span className="num">{post.likes}</span>
                 <span className="lbl">CURTIR</span>
               </button>
-              <button className={"reaction-btn " + (fired ? "active" : "")} onClick={()=>{setFired(!fired); toggleLike(post.id,"fires",!fired);}}>
+              <button className={"reaction-btn " + (fired ? "active" : "")} onClick={()=>{ if (!fired) { setFired(true); toggleLike(post.id,"fires",true); } }}>
                 <Icon.Fire />
-                <span className="num">{post.fires + (fired ? 1 : 0)}</span>
+                <span className="num">{post.fires}</span>
                 <span className="lbl">FOGO</span>
               </button>
               <button className="reaction-btn">
@@ -531,6 +585,17 @@ function PostPage({ postId, posts, go, getComments, addComment, toggleLike }) {
 // HISTORIA / TIMELINE
 // ============================================================
 function HistoriaPage({ go }) {
+  const [timeline, setTimeline] = React.useState(TIMELINE);
+
+  React.useEffect(() => {
+    const q = query(collection(db, 'timeline'), orderBy('year', 'asc'));
+    const unsub = onSnapshot(q, snap => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (items.length > 0) setTimeline(items);
+    });
+    return () => unsub();
+  }, []);
+
   return (
     <div className="page-enter">
       <section className="section tight" style={{paddingTop:64}}>
@@ -539,7 +604,7 @@ function HistoriaPage({ go }) {
           <h1 className="display" style={{fontSize:"clamp(56px,9vw,130px)",lineHeight:0.85,margin:"12px 0 32px",textTransform:"uppercase"}}>
             NOSSA<br/><span style={{color:"var(--red)"}}>HISTÓRIA</span>
           </h1>
-          <p style={{maxWidth:"60ch",fontSize:18,color:"#bbb",lineHeight:1.55}}>
+          <p style={{maxWidth:"60ch",fontSize:18,color:"var(--text-body)",lineHeight:1.55}}>
             Da primeira roda informal no Centro Cultural até as duas edições da EPIFANIA —
             uma linha do tempo do que a quebrada construiu junta.
           </p>
@@ -549,14 +614,15 @@ function HistoriaPage({ go }) {
       <section className="section tight">
         <div className="wrap">
           <div className="timeline">
-            {TIMELINE.map((t, i) => (
-              <div className="tl-item" key={i}>
+            {[...timeline].sort((a, b) => (b.year || 0) - (a.year || 0)).map((t, i) => (
+              <div className="tl-item" key={t.id || i}>
                 <div className="tl-year">{t.year}</div>
                 <div className="tl-body">
+                  {t.imageUrl && <img src={t.imageUrl} alt={t.title} style={{width:'100%',height:200,objectFit:'cover',marginBottom:16,display:'block'}} />}
                   <h3>{t.title}</h3>
                   <p>{t.body}</p>
                   <div className="tl-tags">
-                    {t.tags.map(g => <span key={g}>{g}</span>)}
+                    {(t.tags || []).map(g => <span key={g}>{g}</span>)}
                   </div>
                 </div>
               </div>
@@ -601,7 +667,7 @@ function HistoriaPage({ go }) {
               <div key={i} className="collective" style={{background:"var(--panel)"}}>
                 <div className="role">{p.role}</div>
                 <h3>{p.name}</h3>
-                <p style={{color:"#ddd",fontStyle:"italic"}}>“{p.quote}”</p>
+                <p style={{color:"var(--text-body)",fontStyle:"italic"}}>&ldquo;{p.quote}&rdquo;</p>
               </div>
             ))}
           </div>
@@ -615,9 +681,17 @@ function HistoriaPage({ go }) {
 // GALERIA
 // ============================================================
 function GaleriaPage() {
-  const [filter, setFilter] = React.useState("Todos");
+  const [gallery, setGallery] = React.useState(GALLERY);
   const [open, setOpen] = React.useState(null);
-  const filters = ["Todos", "EPIFANIA 2024", "EPIFANIA 2022", "Batalhas", "Oficinas", "Bastidores"];
+
+  React.useEffect(() => {
+    const q = query(collection(db, 'gallery'), orderBy('order', 'asc'));
+    const unsub = onSnapshot(q, snap => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (items.length > 0) setGallery(items);
+    });
+    return () => unsub();
+  }, []);
 
   return (
     <div className="page-enter">
@@ -628,20 +702,15 @@ function GaleriaPage() {
             GALE<span style={{color:"var(--red)"}}>RIA</span>
           </h1>
 
-          <div className="tag-chips" style={{marginBottom:32}}>
-            {filters.map(f => (
-              <button key={f} className={"chip " + (filter === f ? "active" : "")} onClick={() => setFilter(f)}>
-                {f}
-              </button>
-            ))}
-          </div>
-
           <div className="gallery-grid">
-            {GALLERY.map((g, i) => (
-              <div key={i} className={"gallery-item " + g.size} onClick={() => setOpen(g)}>
-                <Placeholder label={g.label} variant={g.variant} />
+            {gallery.map((g, i) => (
+              <div key={g.id || i} className={"gallery-item " + (g.size || '')} onClick={() => setOpen(g)}>
+                {g.url
+                  ? <img src={g.url} alt={g.label || ''} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',display:'block'}} />
+                  : <Placeholder label={g.label} variant={g.variant} />
+                }
                 <div className="gallery-overlay">
-                  <div>{g.label}<br/><small style={{opacity:.8}}>CLIQUE PARA AMPLIAR →</small></div>
+                  <div>{g.label || ''}<br/><small style={{opacity:.8}}>CLIQUE PARA AMPLIAR</small></div>
                 </div>
               </div>
             ))}
@@ -650,10 +719,14 @@ function GaleriaPage() {
       </section>
 
       {open && (
-        <div className="lightbox" onClick={() => setOpen(null)}>
-          <div className="lightbox-content" onClick={(e)=>e.stopPropagation()}>
-            <button className="lightbox-close" onClick={() => setOpen(null)}>✕</button>
-            <Placeholder label={open.label} variant={open.variant} />
+        <div className="lightbox" onClick={() => setOpen(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.92)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div onClick={e=>e.stopPropagation()} style={{position:'relative',maxWidth:'90vw',maxHeight:'90vh'}}>
+            <button onClick={() => setOpen(null)} style={{position:'absolute',top:-40,right:0,background:'transparent',border:'none',color:'var(--off-white)',fontSize:24,cursor:'pointer'}}>✕</button>
+            {open.url
+              ? <img src={open.url} alt={open.label || ''} style={{maxWidth:'90vw',maxHeight:'90vh',objectFit:'contain',display:'block'}} />
+              : <Placeholder label={open.label} variant={open.variant} />
+            }
+            {open.label && <div className="mono" style={{marginTop:12,textAlign:'center',fontSize:'0.8rem',color:'var(--muted)'}}>{open.label}</div>}
           </div>
         </div>
       )}
@@ -665,30 +738,35 @@ function GaleriaPage() {
 // LOJA
 // ============================================================
 function LojaPage() {
-  const produtos = [
-    { name:"Camiseta Logo Deliricamente",   var:"Preta · Estampa branca", price:"R$ 65" },
-    { name:"Moletom AGC",                   var:"Cinza · Bordado vermelho", price:"R$ 180" },
-    { name:"Boné EPIFANIA",                 var:"Preto · Trucker", price:"R$ 50" },
-    { name:"Fanzine #03 — Delírio em Coletivo", var:"40 págs · A5", price:"R$ 20" },
-    { name:"Vinil Selo AGC vol. 1",         var:"180g · Edição limitada", price:"R$ 120" },
+  const STATIC_PRODUTOS = [
+    { name:"Camiseta Logo Deliricamente", description:"Preta · Estampa branca", price:"R$ 65" },
+    { name:"Moletom AGC", description:"Cinza · Bordado vermelho", price:"R$ 180" },
+    { name:"Fanzine #03", description:"40 págs · A5", price:"R$ 20" },
   ];
+  const [produtos, setProdutos] = React.useState(STATIC_PRODUTOS);
+
+  React.useEffect(() => {
+    const q = query(collection(db, 'products'), orderBy('order', 'asc'));
+    const unsub = onSnapshot(q, snap => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.active !== false);
+      if (items.length > 0) setProdutos(items);
+    });
+    return () => unsub();
+  }, []);
+
   return (
     <div className="page-enter">
       <section className="loja-section">
-        <Splatter color="#0A0A0A" opacity={0.55} />
+        <Splatter color="var(--black)" opacity={0.55} />
         <div className="wrap loja-grid">
           <div>
-            <div className="kicker" style={{color:"#fff"}}>// Produtos oficiais</div>
+            <div className="kicker" style={{color:"var(--off-white)"}}>// Produtos oficiais</div>
             <h2>VESTE A <em>CAMISA</em><br/>DA QUEBRADA</h2>
             <p>
               Camisetas, moletons, bonés, fanzines e vinis do selo independente do AGC. Cada
               compra ajuda a financiar a próxima EPIFANIA, as oficinas e as ações de
-              arrecadação. Loja externa, redirecionamento seguro.
+              arrecadação.
             </p>
-            <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-              <Btn variant="paper" arrow>Ir pra loja externa</Btn>
-              <Btn variant="ghost" style={{borderColor:"#fff",color:"#fff"}}>Pedidos no DM</Btn>
-            </div>
             <div className="mono" style={{marginTop:24,color:"rgba(255,255,255,.8)"}}>
               // FRETE PRA TODO BRASIL · ENVIO EM ATÉ 7 DIAS ÚTEIS
             </div>
@@ -696,13 +774,17 @@ function LojaPage() {
 
           <div className="product-stack">
             {produtos.map((p, i) => (
-              <div className="product-card" key={i} style={{"--r": (i % 2 ? "1.5deg" : "-1.5deg")}}>
-                <div className="product-thumb">
-                  <Placeholder label={p.name.split(" ")[0]} variant="paper" />
+              <div className="product-card" key={p.id || i} style={{"--r": (i % 2 ? "1.5deg" : "-1.5deg")}}
+                onClick={() => p.link && window.open(p.link, '_blank')}>
+                <div className="product-thumb" style={{overflow:'hidden'}}>
+                  {p.imageUrl
+                    ? <img src={p.imageUrl} alt={p.name} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                    : <Placeholder label={p.name.split(" ")[0]} variant="paper" />
+                  }
                 </div>
-                <div>
+                <div style={{flex:1}}>
                   <h4>{p.name}</h4>
-                  <small>{p.var}</small>
+                  <small>{p.description || p.var}</small>
                 </div>
                 <div className="product-price">{p.price}</div>
               </div>

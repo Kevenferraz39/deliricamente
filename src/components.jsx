@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 /* ============================================================
    Shared visual primitives for the Deliricamente site
@@ -7,22 +7,26 @@ import React from 'react';
 // --------------------------------------------------------------
 // Concentric-oval logo, original mark (ellipses + small cluster)
 // --------------------------------------------------------------
-function LogoMark({ size = 64, color = "#F4F0E8", accent = "#E10600" }) {
+function LogoMark({ size = 64, color = "var(--off-white)", accent = "var(--red)", imageUrl = "" }) {
+  // ID unico por instancia para evitar conflito de clipPath
+  const cid = React.useId ? React.useId().replace(/:/g,'') : 'lm' + size;
   return (
     <svg className="logo-mark" width={size} height={size} viewBox="0 0 100 100" fill="none">
-      <circle cx="50" cy="50" r="49" fill="#0A0A0A" stroke={accent} strokeWidth="1" />
-      {/* concentric ellipses */}
-      <ellipse cx="50" cy="50" rx="40" ry="14" stroke={color} strokeWidth="1.2" />
-      <ellipse cx="50" cy="50" rx="34" ry="12" stroke={color} strokeWidth="1" opacity=".8" />
-      <ellipse cx="50" cy="50" rx="28" ry="10" stroke={color} strokeWidth="1" opacity=".6" />
-      <ellipse cx="50" cy="50" rx="22" ry="8"  stroke={color} strokeWidth="1" opacity=".45" />
-      {/* central cluster */}
-      <circle cx="50" cy="50" r="5" fill={color} />
-      <circle cx="46" cy="47" r="3" fill={color} />
-      <circle cx="54" cy="47" r="3" fill={color} />
-      <circle cx="50" cy="53" r="3" fill={color} />
-      <circle cx="47" cy="51" r="2" fill={color} />
-      <circle cx="53" cy="51" r="2" fill={color} />
+      {imageUrl && (
+        <defs>
+          <clipPath id={cid}>
+            <circle cx="50" cy="50" r="47" />
+          </clipPath>
+        </defs>
+      )}
+      {/* Circulo de fundo */}
+      <circle cx="50" cy="50" r="49" fill="var(--black)" stroke={accent} strokeWidth="1" />
+      {/* Imagem dentro do circulo (opcional) */}
+      {imageUrl && (
+        <image href={imageUrl} x="3" y="3" width="94" height="94"
+          preserveAspectRatio="xMidYMid slice"
+          clipPath={'url(#' + cid + ')'} style={{opacity:0.85}} />
+      )}
     </svg>
   );
 }
@@ -56,7 +60,7 @@ const SPLATTER_DROPS = [
   { x: 52, y: 76 }, { x: 30, y: 86 }, { x: 60, y: 18 },
 ];
 
-function Splatter({ color = "#E10600", opacity = 1 }) {
+function Splatter({ color = "var(--red)", opacity = 1 }) {
   return (
     <svg
       className="hero-splatter"
@@ -225,6 +229,328 @@ const Icon = {
   ),
 };
 
+// --------------------------------------------------------------
+// AnimatedBackground — Canvas 2D: blobs | rede | geo | off
+// --------------------------------------------------------------
+function AnimatedBackground({ style = 'blobs', speed = 1, density = 15, opacity = 0.85 }) {
+  const canvasRef = React.useRef(null);
+  const st = React.useRef({ ps: [], tags: [], raf: null, frame: 0, color: '#E10600', nextTag: 0 });
+
+  React.useEffect(() => {
+    if (style === 'off') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const s = st.current;
+
+    const getAccent = () =>
+      getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#E10600';
+    const hex2 = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
+
+    const CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#%&/?<>';
+
+    const makeTag = () => {
+      const sx = 40 + Math.random() * (canvas.width - 80);
+      const sy = 30 + Math.random() * (canvas.height - 60);
+      const n = 5 + Math.floor(Math.random() * 9);
+      const pts = [{ x: sx, y: sy }];
+      for (let i = 1; i < n; i++)
+        pts.push({ x: pts[i-1].x + (Math.random() - 0.5) * 140, y: pts[i-1].y + (Math.random() - 0.5) * 90 });
+      return { pts, life: 1, decay: (0.002 + Math.random() * 0.005) * speed, drawn: 0, ds: 0.04 + Math.random() * 0.1, w: 1.5 + Math.random() * 4 };
+    };
+
+    const init = () => {
+      const n = Math.min(Math.max(5, Math.floor(density)), 40);
+      s.color = getAccent(); s.tags = []; s.nextTag = 30;
+      if (style === 'blobs') {
+        s.ps = Array.from({ length: n }, () => ({
+          x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+          r: 30 + Math.random() * 150, vx: (Math.random() - 0.5) * 0.3 * speed, vy: (Math.random() - 0.5) * 0.3 * speed,
+          phase: Math.random() * Math.PI * 2, ps: (0.005 + Math.random() * 0.008) * speed, op: 0.4 + Math.random() * 0.55,
+        }));
+      } else if (style === 'rede') {
+        s.ps = Array.from({ length: Math.min(n * 3, 90) }, () => ({
+          x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+          r: 2 + Math.random() * 3, vx: (Math.random() - 0.5) * 0.5 * speed, vy: (Math.random() - 0.5) * 0.5 * speed, op: 0.5 + Math.random() * 0.5,
+        }));
+      } else if (style === 'geo') {
+        s.ps = Array.from({ length: Math.min(n, 22) }, () => ({
+          x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+          size: 20 + Math.random() * 70, vx: (Math.random() - 0.5) * 0.2 * speed, vy: (Math.random() - 0.5) * 0.2 * speed,
+          rot: Math.random() * Math.PI * 2, rotV: (Math.random() - 0.5) * 0.012 * speed,
+          sides: [3, 4, 6][Math.floor(Math.random() * 3)], op: 0.2 + Math.random() * 0.45,
+        }));
+      } else if (style === 'chuva') {
+        const cols = Math.floor(canvas.width / 16);
+        s.ps = Array.from({ length: cols }, (_, i) => ({
+          x: i * 16 + 8, y: Math.random() * canvas.height,
+          spd: (0.4 + Math.random() * 1.5) * speed,
+          char: CHARS[Math.floor(Math.random() * CHARS.length)],
+          bright: Math.random() > 0.88,
+        }));
+      } else if (style === 'spray') {
+        s.ps = Array.from({ length: Math.min(n * 5, 150) }, () => ({
+          x: Math.random() * canvas.width, y: -Math.random() * canvas.height * 0.5,
+          vx: (Math.random() - 0.5) * 1.5, vy: (0.8 + Math.random() * 2) * speed,
+          r: 1 + Math.random() * 3, life: Math.random(),
+        }));
+      } else if (style === 'glitch' || style === 'pichacao') {
+        s.ps = [];
+      }
+    };
+
+    const polygon = (x, y, size, sides, rot) => {
+      ctx.beginPath();
+      for (let i = 0; i < sides; i++) {
+        const a = rot + (i / sides) * Math.PI * 2;
+        i === 0 ? ctx.moveTo(x + Math.cos(a) * size, y + Math.sin(a) * size) : ctx.lineTo(x + Math.cos(a) * size, y + Math.sin(a) * size);
+      }
+      ctx.closePath();
+    };
+
+    const draw = () => {
+      s.frame++; if (s.frame % 60 === 0) s.color = getAccent();
+      const c = s.color; const ps = s.ps;
+
+      // --- GLITCH ---
+      if (style === 'glitch') {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < 4 + Math.floor(Math.random() * 8); i++) {
+          const y = Math.random() * canvas.height;
+          const h = 1 + Math.floor(Math.random() * 12);
+          ctx.fillStyle = c + hex2(Math.random() * opacity * 0.4 * 255);
+          ctx.fillRect(0, y, canvas.width, h);
+        }
+        for (let y = 0; y < canvas.height; y += 4) { ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(0, y, canvas.width, 1); }
+        if (Math.random() < 0.12) {
+          const sh = 8 + Math.random() * 14;
+          ctx.fillStyle = '#ff000018'; ctx.fillRect(-sh, 0, canvas.width, canvas.height);
+          ctx.fillStyle = '#0000ff18'; ctx.fillRect(sh, 0, canvas.width, canvas.height);
+        }
+        if (Math.random() < 0.04) { ctx.fillStyle = c + hex2(opacity * 0.9 * 255); ctx.fillRect(0, Math.random() * canvas.height, canvas.width, 1 + Math.random() * 2); }
+        if (Math.random() < 0.06) {
+          for (let i = 0; i < 4; i++) {
+            ctx.fillStyle = c + hex2(Math.random() * opacity * 0.35 * 255);
+            ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 20 + Math.random() * 100, 2 + Math.random() * 5);
+          }
+        }
+
+      // --- CHUVA (char rain) ---
+      } else if (style === 'chuva') {
+        const bg = getComputedStyle(document.documentElement).getPropertyValue('--black').trim() || '#0A0A0A';
+        ctx.fillStyle = bg + '12'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '14px monospace';
+        ps.forEach(p => {
+          ctx.fillStyle = p.bright ? '#ffffff' + hex2(opacity * 255) : c + hex2(opacity * 0.75 * 255);
+          ctx.fillText(p.char, p.x, p.y);
+          p.y += p.spd * 3;
+          if (Math.random() < 0.08) p.char = CHARS[Math.floor(Math.random() * CHARS.length)];
+          if (p.y > canvas.height) { p.y = -16; p.bright = Math.random() > 0.88; }
+        });
+
+      // --- SPRAY ---
+      } else if (style === 'spray') {
+        ctx.fillStyle = 'rgba(0,0,0,0.04)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ps.forEach(p => {
+          p.x += p.vx; p.y += p.vy; p.vx += (Math.random() - 0.5) * 0.08; p.life -= 0.004;
+          if (p.y > canvas.height || p.life <= 0) {
+            p.x = Math.random() * canvas.width; p.y = -5;
+            p.vx = (Math.random() - 0.5) * 1.5; p.vy = (0.8 + Math.random() * 2) * speed;
+            p.life = 0.5 + Math.random() * 0.5; p.r = 1 + Math.random() * 3;
+          }
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = c + hex2(Math.min(p.life, 1) * opacity * 255); ctx.fill();
+        });
+
+      // --- PICHACAO (identidade do site) ---
+      } else if (style === 'pichacao') {
+        ctx.fillStyle = 'rgba(0,0,0,0.018)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        s.nextTag--;
+        if (s.nextTag <= 0) {
+          s.tags.push(makeTag());
+          s.nextTag = Math.floor((50 + Math.random() * 100) / speed);
+          if (s.tags.length > 14) s.tags.shift();
+        }
+        s.tags = s.tags.filter(t => t.life > 0);
+        s.tags.forEach(t => {
+          t.drawn = Math.min(1, t.drawn + t.ds); t.life -= t.decay;
+          const pts = t.pts; const show = Math.max(2, Math.floor(t.drawn * pts.length));
+          ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < show; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.strokeStyle = c + hex2(Math.min(t.life, 1) * opacity * 255);
+          ctx.lineWidth = t.w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+          // detalhes de preenchimento (bolhas de tinta)
+          if (t.drawn > 0.5 && Math.random() < 0.015) {
+            const pt = pts[Math.floor(Math.random() * show)];
+            ctx.beginPath(); ctx.arc(pt.x + (Math.random()-0.5)*8, pt.y + (Math.random()-0.5)*8, 1 + Math.random()*2.5, 0, Math.PI * 2);
+            ctx.fillStyle = c + hex2(t.life * opacity * 0.7 * 255); ctx.fill();
+          }
+        });
+
+      // --- BLOBS / REDE / GEO (com clearRect) ---
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (style === 'blobs') {
+          ps.forEach(b => {
+            b.x += b.vx; b.y += b.vy; b.phase += b.ps;
+            if (b.x < -b.r*2) b.x = canvas.width+b.r; if (b.x > canvas.width+b.r*2) b.x = -b.r;
+            if (b.y < -b.r*2) b.y = canvas.height+b.r; if (b.y > canvas.height+b.r*2) b.y = -b.r;
+            const pulse = 1 + Math.sin(b.phase) * 0.12;
+            ctx.beginPath(); ctx.arc(b.x, b.y, b.r * pulse, 0, Math.PI * 2);
+            ctx.fillStyle = c + hex2(b.op * opacity * 255); ctx.fill();
+          });
+        } else if (style === 'rede') {
+          ps.forEach(p => {
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
+            if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
+          });
+          const maxD = 130;
+          for (let i = 0; i < ps.length; i++) for (let j = i+1; j < ps.length; j++) {
+            const dx = ps[i].x-ps[j].x, dy = ps[i].y-ps[j].y, d = Math.sqrt(dx*dx+dy*dy);
+            if (d < maxD) {
+              ctx.beginPath(); ctx.moveTo(ps[i].x, ps[i].y); ctx.lineTo(ps[j].x, ps[j].y);
+              ctx.strokeStyle = c + hex2((1-d/maxD)*opacity*0.5*255); ctx.lineWidth = 1; ctx.stroke();
+            }
+          }
+          ps.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fillStyle = c + hex2(p.op*opacity*255); ctx.fill(); });
+        } else if (style === 'geo') {
+          ps.forEach(g => {
+            g.x += g.vx; g.y += g.vy; g.rot += g.rotV;
+            if (g.x < -g.size*2) g.x = canvas.width+g.size; if (g.x > canvas.width+g.size*2) g.x = -g.size;
+            if (g.y < -g.size*2) g.y = canvas.height+g.size; if (g.y > canvas.height+g.size*2) g.y = -g.size;
+            polygon(g.x, g.y, g.size, g.sides, g.rot);
+            ctx.strokeStyle = c + hex2(g.op*opacity*255); ctx.lineWidth = 1.5; ctx.stroke();
+          });
+        }
+      }
+      s.raf = requestAnimationFrame(draw);
+    };
+
+    resize(); window.addEventListener('resize', resize); init(); draw();
+    return () => { cancelAnimationFrame(s.raf); window.removeEventListener('resize', resize); };
+  }, [style, speed, density, opacity]);
+
+  if (style === 'off') return null;
+  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }} />;
+}
+
+// --------------------------------------------------------------
+// HeroCarousel — slides com imagem, titulo, CTA e auto-play
+// --------------------------------------------------------------
+function HeroCarousel({ slides = [], autoPlay = true, interval = 5, go }) {
+  const [cur, setCur] = React.useState(0);
+  const [fade, setFade] = React.useState(false);
+  const total = slides.length;
+
+  React.useEffect(() => {
+    if (!autoPlay || total <= 1) return;
+    const t = setInterval(() => move(1), interval * 1000);
+    return () => clearInterval(t);
+  }, [autoPlay, interval, total, cur]);
+
+  const move = (dir) => {
+    setFade(true);
+    setTimeout(() => { setCur(c => (c + dir + total) % total); setFade(false); }, 300);
+  };
+  const goTo = (i) => { setFade(true); setTimeout(() => { setCur(i); setFade(false); }, 300); };
+
+  if (!total) return null;
+  const s = slides[cur];
+  const hasText = s.title || s.kicker || s.subtitle || s.ctaText;
+
+  const SLIDE_H = 'clamp(460px, 68vh, 700px)';
+  const BTN = {
+    position: 'absolute', top: '50%', transform: 'translateY(-50%)', zIndex: 6,
+    width: 44, height: 44, cursor: 'pointer', fontSize: 18,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.25)',
+    color: 'var(--off-white)', transition: 'background 0.2s, border-color 0.2s',
+  };
+
+  return (
+    /* ── Faixa full-width com fundo da página ── */
+    <div style={{ background: 'var(--black)', padding: '0 0 0' }}>
+
+      {/* ── Banner 90% centralizado ── */}
+      <div style={{ width: '90%', maxWidth: 1400, margin: '0 auto', borderTop: '2px solid var(--red)', position: 'relative' }}>
+
+        {/* ── Área da imagem ── */}
+        <div style={{ position: 'relative', height: SLIDE_H, overflow: 'hidden' }}>
+
+          {/* Slides */}
+          {slides.map((sl, i) => (
+            <div key={i} style={{ position: 'absolute', inset: 0, zIndex: i === cur ? 1 : 0, opacity: i === cur ? (fade ? 0 : 1) : 0, transition: 'opacity 0.35s ease' }}>
+              {sl.imageUrl
+                ? <img src={sl.imageUrl} alt={sl.title || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }} />
+                : <div style={{ width: '100%', height: '100%', background: 'var(--panel)' }} />
+              }
+            </div>
+          ))}
+
+          {/* Gradiente lateral para legibilidade do texto */}
+          {hasText && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.45) 40%, rgba(0,0,0,0.0) 75%)' }} />
+          )}
+
+          {/* ── Efeito embaçado na borda inferior (estilo ML) ── */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 140, zIndex: 5, pointerEvents: 'none' }}>
+            {/* Camada de blur progressivo */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              maskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.5) 40%, black 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.5) 40%, black 100%)',
+            }} />
+            {/* Camada de cor que funde com o fundo da página */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to bottom, transparent 0%, rgba(10,10,10,0.4) 45%, var(--black) 100%)',
+            }} />
+          </div>
+
+          {/* Texto */}
+          {hasText && (
+            <div className="wrap" style={{ position: 'absolute', inset: 0, zIndex: 4, display: 'flex', alignItems: 'center' }}>
+              <div style={{ maxWidth: 560, opacity: fade ? 0 : 1, transform: fade ? 'translateY(10px)' : 'none', transition: 'opacity 0.28s, transform 0.28s' }}>
+                {s.kicker && <div className="kicker">{s.kicker}</div>}
+                {s.title && <h2 style={{ fontSize: 'clamp(1.8rem, 4.2vw, 3.8rem)', margin: '6px 0 12px', lineHeight: 0.92, color: 'var(--off-white)' }}>{s.title}</h2>}
+                {s.subtitle && <p style={{ color: 'var(--text-body)', maxWidth: '42ch', marginBottom: 20, fontSize: 'clamp(0.9rem, 1.4vw, 1.05rem)' }}>{s.subtitle}</p>}
+                {s.ctaText && <Btn variant="red" arrow onClick={() => s.ctaPage && go && go(s.ctaPage)}>{s.ctaText}</Btn>}
+              </div>
+            </div>
+          )}
+
+          {/* Setas */}
+          {total > 1 && (
+            <>
+              <button onClick={() => move(-1)} style={{ ...BTN, left: 14 }}>&#8592;</button>
+              <button onClick={() => move(1)}  style={{ ...BTN, right: 14 }}>&#8594;</button>
+            </>
+          )}
+
+          {/* Contador */}
+          <div style={{ position: 'absolute', top: 12, right: 14, zIndex: 6, fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', letterSpacing: '0.05em' }}>
+            {cur + 1} / {total}
+          </div>
+        </div>
+
+        {/* Dots centralizados abaixo */}
+        {total > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px 0 4px' }}>
+            {slides.map((_, i) => (
+              <div key={i} onClick={() => goTo(i)} style={{ width: i === cur ? 28 : 8, height: 8, borderRadius: 4, background: i === cur ? 'var(--red)' : 'rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'all 0.3s' }} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 Object.assign(window, {
   LogoMark, Splatter, Placeholder, Marquee, Btn, Icon,
+  AnimatedBackground, HeroCarousel,
 });

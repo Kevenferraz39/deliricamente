@@ -13,6 +13,7 @@
   --gray: #2A2A2A;
   --muted: #888888;
   --paper: #E5E0D8;
+  --text-body: #bbbbbb;
   --line: rgba(255, 255, 255, 0.1);
   --font-display: 'Anton', sans-serif;
   --font-body: 'Space Grotesk', sans-serif;
@@ -45,7 +46,7 @@ h1, h2, h3, h4, h5, h6, .display {
 h1 { font-size: clamp(3rem, 10vw, 8rem); color: var(--red); }
 h2 { font-size: clamp(2rem, 6vw, 4rem); color: var(--off-white); }
 h3 { font-size: clamp(1.5rem, 4vw, 2.5rem); }
-p { font-size: clamp(1rem, 2vw, 1.125rem); font-weight: 400; color: #bbb; }
+p { font-size: clamp(1rem, 2vw, 1.125rem); font-weight: 400; color: var(--text-body); }
 
 a { color: var(--red); text-decoration: none; transition: var(--transition); cursor: pointer; }
 a:hover { opacity: 0.8; }
@@ -156,14 +157,14 @@ em { font-style: normal; color: var(--red); }
 .post-hero h1 { font-size: clamp(3rem, 7vw, 6rem); margin: 1rem 0; line-height: 0.85; }
 .meta-row { display: flex; flex-wrap: wrap; gap: 2rem; font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 1.5rem; }
 .meta-row b { color: var(--off-white); }
-.post-cover-big { width: 100%; aspect-ratio: 21/9; background: var(--gray); margin-bottom: 4rem; position: relative; overflow: hidden; }
+.post-cover-big { width: 100%; height: clamp(380px, 65vh, 740px); background: var(--black); margin-bottom: 4rem; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 
 .post-content { display: grid; grid-template-columns: 2.5fr 1fr; gap: 4rem; }
 @media (max-width: 900px) { .post-content { grid-template-columns: 1fr; } }
-article p { font-size: 1.125rem; line-height: 1.8; margin-bottom: 1.5rem; color: #ddd; }
+article p { font-size: 1.125rem; line-height: 1.8; margin-bottom: 1.5rem; color: var(--text-body); }
 article h2, article h3 { margin: 3rem 0 1.5rem; }
 article blockquote { border-left: 4px solid var(--red); padding-left: 1.5rem; margin: 2rem 0; font-size: 1.5rem; font-style: italic; color: var(--off-white); }
-article ul { margin: 2rem 0; padding-left: 1.5rem; color: #ddd; line-height: 1.8; }
+article ul { margin: 2rem 0; padding-left: 1.5rem; color: var(--text-body); line-height: 1.8; }
 .embed { width: 100%; aspect-ratio: 16/9; background: var(--panel); margin: 2rem 0; }
 
 .post-aside { position: sticky; top: 100px; }
@@ -197,7 +198,7 @@ article ul { margin: 2rem 0; padding-left: 1.5rem; color: #ddd; line-height: 1.8
 .comment-avatar { width: 48px; height: 48px; background: var(--panel); border: 1px solid var(--gray); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 1.5rem; color: var(--red); flex-shrink: 0; }
 .comment-head { display: flex; gap: 1rem; align-items: baseline; margin-bottom: 0.5rem; font-family: var(--font-mono); font-size: 0.85rem; }
 .comment-head span { color: var(--muted); }
-.comment-text { color: #ccc; }
+.comment-text { color: var(--text-body); }
 
 /* ============================================================
    OUTRAS PÁGINAS INTERNAS (Loja, Contato, Historia, Galeria)
@@ -232,7 +233,7 @@ article ul { margin: 2rem 0; padding-left: 1.5rem; color: #ddd; line-height: 1.8
 .contato-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 4rem; }
 @media (max-width: 768px) { .contato-grid { grid-template-columns: 1fr; } }
 .contato-info h3 { font-size: 1.5rem; margin: 2rem 0 0.5rem; }
-.contato-info p { color: #aaa; }
+.contato-info p { color: var(--muted); }
 .socials { display: flex; gap: 0.5rem; margin-top: 1rem; }
 
 .agc-section { background: var(--paper); color: var(--black); }
@@ -308,7 +309,7 @@ article ul { margin: 2rem 0; padding-left: 1.5rem; color: #ddd; line-height: 1.8
 .title-thumb { width: 48px; height: 48px; background: var(--gray); flex-shrink: 0; position: relative;}
 .status-pill { font-family: var(--font-mono); font-size: 0.7rem; padding: 0.25rem 0.5rem; border-radius: 4px; text-align: center; }
 .status-pill.published { background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); }
-.status-pill.draft { background: rgba(255, 255, 255, 0.05); color: #aaa; border: 1px solid rgba(255, 255, 255, 0.1); }
+.status-pill.draft { background: rgba(255, 255, 255, 0.05); color: var(--muted); border: 1px solid rgba(255, 255, 255, 0.1); }
 
 .row-actions { display: flex; gap: 0.5rem; }
 .icon-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--line); color: var(--muted); cursor: pointer; border-radius: 4px; }
@@ -317,12 +318,12 @@ article ul { margin: 2rem 0; padding-left: 1.5rem; color: #ddd; line-height: 1.8
 
 .editor-shell { display: grid; grid-template-columns: 1fr 300px; gap: 2rem; }
 .editor-title { width: 100%; background: transparent; border: none; font-family: var(--font-display); font-size: 3rem; color: var(--off-white); margin-bottom: 1rem; outline: none; text-transform: uppercase; }
-.editor-title::placeholder { color: #333; }
+.editor-title::placeholder { color: var(--gray); }
 .editor-toolbar { display: flex; gap: 0.5rem; background: var(--panel); padding: 0.5rem; border: 1px solid var(--line); border-bottom: none; }
-.editor-toolbar button { background: transparent; border: none; color: #aaa; font-family: var(--font-mono); font-size: 0.8rem; padding: 0.5rem; cursor: pointer; }
+.editor-toolbar button { background: transparent; border: none; color: var(--muted); font-family: var(--font-mono); font-size: 0.8rem; padding: 0.5rem; cursor: pointer; }
 .editor-toolbar button:hover { background: #222; color: var(--off-white); }
 .editor-toolbar .sep { width: 1px; background: var(--line); margin: 0 0.5rem; }
-.editor-body { width: 100%; min-height: 500px; background: var(--black); border: 1px solid var(--line); color: #ddd; padding: 1.5rem; font-family: var(--font-mono); font-size: 0.95rem; line-height: 1.6; resize: vertical; outline: none; }
+.editor-body { width: 100%; min-height: 500px; background: var(--black); border: 1px solid var(--line); color: var(--text-body); padding: 1.5rem; font-family: var(--font-mono); font-size: 0.95rem; line-height: 1.6; resize: vertical; outline: none; }
 .editor-side .box { background: var(--panel); border: 1px solid var(--line); padding: 1.5rem; margin-bottom: 1.5rem; }
 .editor-side .box h4 { font-family: var(--font-mono); font-size: 0.8rem; color: var(--red); margin-bottom: 1rem; }
 .upload-zone { border: 1px dashed var(--gray); padding: 2rem 1rem; text-align: center; color: var(--muted); font-family: var(--font-mono); font-size: 0.8rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
