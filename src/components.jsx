@@ -607,7 +607,7 @@ function AnimatedBackground({ style = 'blobs', speed = 1, density = 15, opacity 
   }, [style, speed, density, opacity]);
 
   if (style === 'off') return null;
-  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }} />;
+  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: -1, pointerEvents: 'none' }} />;
 }
 
 // --------------------------------------------------------------

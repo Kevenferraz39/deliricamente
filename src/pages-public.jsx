@@ -403,23 +403,46 @@ function BlogPage({ posts, go }) {
 // ============================================================
 // POST DETAIL PAGE
 // ============================================================
-function PostPage({ postId, posts, go, getComments, addComment, toggleLike }) {
+function PostPage({ postId, posts, go, getComments, addComment, toggleLike, user }) {
   const post = posts.find(p => p.id === postId);
   if (!post) {
-    return <div className="wrap" style={{padding:80}}><p>Post não encontrado.</p></div>;
+    return <div className="wrap" style={{padding:80}}><p>Post nao encontrado.</p></div>;
   }
-  const [name, setName] = React.useState("");
-  const [email, setEmail] = React.useState("");
+  const [name, setName] = React.useState(user?.name || "");
+  const [email, setEmail] = React.useState(user?.email || "");
   const [text, setText] = React.useState("");
   const [liked, setLiked] = React.useState(false);
   const [fired, setFired] = React.useState(false);
   const comments = getComments(post.id);
 
-  const onSubmit = (e) => {
-    e.preventDefault();
-    if (!name || !text) return;
-    addComment(post.id, { name, email, text, date: new Date().toISOString().slice(0,10) });
-    setText(""); setName(""); setEmail("");
+  // Atualiza campos quando user mudar (login/logout)
+  React.useEffect(() => {
+    if (user) { setName(user.name || ""); setEmail(user.email || ""); }
+  }, [user]);
+
+  // Tempo relativo estilo Instagram
+  const relTime = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
+    const diff = Date.now() - d.getTime();
+    if (isNaN(diff)) return dateStr;
+    if (diff < 60000) return 'agora';
+    if (diff < 3600000) return Math.floor(diff/60000) + 'min';
+    if (diff < 86400000) return Math.floor(diff/3600000) + 'h';
+    if (diff < 604800000) return Math.floor(diff/86400000) + 'd';
+    return d.toLocaleDateString('pt-BR', {day:'2-digit',month:'short'});
+  };
+
+  const submit = (e) => {
+    e && e.preventDefault();
+    if (!text.trim()) return;
+    const commentName = name.trim() || (user?.name) || 'Anonimo';
+    const commentEmail = email.trim() || (user?.email) || '';
+    addComment(post.id, {
+      name: commentName, email: commentEmail, text: text.trim(),
+      date: new Date().toISOString(),
+    });
+    setText("");
   };
 
   return (
@@ -497,34 +520,64 @@ function PostPage({ postId, posts, go, getComments, addComment, toggleLike }) {
               return null;
             })}
 
-            <div className="comments">
-              <h3>{comments.length} comentários</h3>
-              <form className="comment-form" onSubmit={onSubmit}>
-                <div className="row">
-                  <input className="input" placeholder="SEU NOME" value={name} onChange={(e)=>setName(e.target.value)} />
-                  <input className="input" placeholder="E-MAIL (NÃO PUBLICADO)" value={email} onChange={(e)=>setEmail(e.target.value)} />
-                </div>
-                <textarea className="input textarea" placeholder="ESCREVE AÍ — RIMA, RESENHA, ELOGIO, CRÍTICA..." value={text} onChange={(e)=>setText(e.target.value)} />
-                <div style={{display:"flex",gap:10}}>
-                  <Btn variant="red" arrow type="submit">Publicar comentário</Btn>
-                  <span className="mono" style={{color:"var(--muted)",alignSelf:"center"}}>
-                    // COMENTÁRIO VAI PRA MODERAÇÃO ANTES DE APARECER
-                  </span>
-                </div>
-              </form>
+            {/* ── COMENTARIOS estilo Instagram ── */}
+            <div className="comments" style={{marginTop:'3rem',paddingTop:'2rem',borderTop:'1px solid var(--line)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24}}>
+                <h3 style={{margin:0,fontSize:'1.2rem'}}>{comments.length} {comments.length === 1 ? 'Comentario' : 'Comentarios'}</h3>
+              </div>
 
+              {/* Lista de comentarios */}
+              {comments.length === 0 && (
+                <div className="mono" style={{color:'var(--muted)',fontSize:'0.85rem',marginBottom:24}}>
+                  Nenhum comentario ainda. Seja o primeiro!
+                </div>
+              )}
               {comments.map((c,i) => (
-                <div className="comment" key={i}>
-                  <div className="comment-avatar">{(c.name||"?")[0]}</div>
-                  <div className="comment-body">
-                    <div className="comment-head">
-                      <b>{c.name}</b>
-                      <span>{c.date}</span>
+                <div key={i} style={{display:'flex',gap:12,marginBottom:20,alignItems:'flex-start'}}>
+                  <div style={{width:40,height:40,borderRadius:'50%',background:'var(--panel)',border:'1px solid var(--gray)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--font-display)',fontSize:18,color:'var(--red)',flexShrink:0}}>
+                    {(c.name||'?')[0].toUpperCase()}
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap',marginBottom:4}}>
+                      <span style={{fontFamily:'var(--font-mono)',fontWeight:700,color:'var(--off-white)',fontSize:'0.88rem'}}>{c.name}</span>
+                      <span style={{fontFamily:'var(--font-mono)',fontSize:'0.72rem',color:'var(--muted)'}}>{relTime(c.date)}</span>
                     </div>
-                    <div className="comment-text">{c.text}</div>
+                    <p style={{margin:0,color:'var(--text-body)',lineHeight:1.55,fontSize:'0.95rem'}}>{c.text}</p>
                   </div>
                 </div>
               ))}
+
+              {/* Formulario de comentario */}
+              <div style={{borderTop:'1px solid var(--line)',paddingTop:20,marginTop:8}}>
+                {/* Campos nome/email — so mostra se nao logado */}
+                {!user && (
+                  <div style={{display:'flex',gap:10,marginBottom:12}}>
+                    <input style={{flex:1,background:'transparent',border:'none',borderBottom:'1px solid var(--gray)',color:'var(--off-white)',fontFamily:'var(--font-mono)',fontSize:'0.85rem',padding:'8px 0',outline:'none'}}
+                      placeholder="Seu nome *" value={name} onChange={e=>setName(e.target.value)} />
+                    <input style={{flex:1.5,background:'transparent',border:'none',borderBottom:'1px solid var(--gray)',color:'var(--off-white)',fontFamily:'var(--font-mono)',fontSize:'0.85rem',padding:'8px 0',outline:'none'}}
+                      placeholder="E-mail (privado)" value={email} onChange={e=>setEmail(e.target.value)} />
+                  </div>
+                )}
+                {/* Linha do input principal */}
+                <div style={{display:'flex',gap:12,alignItems:'flex-start'}}>
+                  <div style={{width:40,height:40,borderRadius:'50%',background:'var(--panel)',border:`1px solid ${user ? 'var(--red)' : 'var(--gray)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--font-display)',fontSize:18,color:'var(--red)',flexShrink:0}}>
+                    {user ? (user.name||'?')[0].toUpperCase() : '?'}
+                  </div>
+                  <div style={{flex:1}}>
+                    {user && <div className="mono" style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:6}}>{user.name} · {user.email}</div>}
+                    <textarea
+                      style={{width:'100%',background:'transparent',border:'none',borderBottom:'1px solid var(--gray)',color:'var(--off-white)',fontFamily:'var(--font-body)',fontSize:'0.95rem',padding:'8px 0',resize:'none',outline:'none',minHeight:56,lineHeight:1.5}}
+                      placeholder="Adicione um comentario — rima, resenha, elogio, critica..."
+                      value={text} onChange={e=>setText(e.target.value)}
+                      onKeyDown={e=>{ if (e.key==='Enter' && e.ctrlKey) submit(); }}
+                    />
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8}}>
+                      <span className="mono" style={{fontSize:'0.7rem',color:'var(--muted)'}}>Ctrl+Enter para publicar</span>
+                      <Btn variant="red" arrow onClick={submit} disabled={!text.trim()}>Publicar</Btn>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </article>
 
@@ -884,12 +937,56 @@ function ContatoPage() {
 // ============================================================
 // MUSICA — Spotify: playlist, albuns e novidades
 // ============================================================
+function SpotifyToast({ toast, onClose }) {
+  if (!toast) return null;
+  const h = toast.type === 'track' ? 80 : toast.type === 'playlist' ? 380 : 232;
+  return (
+    <div style={{
+      position: 'fixed', bottom: 20, right: 20, zIndex: 9999,
+      width: 340, maxWidth: 'calc(100vw - 32px)',
+      background: '#0f0f0f',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 12,
+      boxShadow: '0 20px 60px rgba(0,0,0,0.95)',
+      overflow: 'hidden',
+      animation: 'slideUp 0.25s ease',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 14px', background: '#1a1a1a',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+          <span style={{color:'#1DB954',fontSize:16,flexShrink:0}}>&#9834;</span>
+          <span style={{fontFamily:'var(--font-mono)',fontSize:'0.75rem',color:'#fff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            {toast.name}
+          </span>
+          {toast.subtitle && (
+            <span style={{fontFamily:'var(--font-mono)',fontSize:'0.65rem',color:'rgba(255,255,255,0.4)',flexShrink:0}}>{toast.subtitle}</span>
+          )}
+        </div>
+        <button onClick={onClose} style={{background:'transparent',border:'none',color:'rgba(255,255,255,0.45)',cursor:'pointer',fontSize:16,flexShrink:0,marginLeft:8,lineHeight:1}}>&#10005;</button>
+      </div>
+      <iframe
+        title={toast.name}
+        src={embedUrl(toast.type, toast.id)}
+        width="100%" height={h}
+        frameBorder="0"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy"
+        style={{display:'block'}}
+      />
+    </div>
+  );
+}
+
 function MusicaPage() {
   const [artists, setArtists] = React.useState([]);
   const [albums, setAlbums] = React.useState({});
   const [topTracks, setTopTracks] = React.useState({});
   const [loading, setLoading] = React.useState(true);
-  const [activeEmbed, setActiveEmbed] = React.useState(null);
+  const [toast, setToast] = React.useState(null);
+  const openToast = (type, id, name, subtitle) => setToast({ type, id, name, subtitle: subtitle || '' });
 
   React.useEffect(() => {
     let cancelled = false;
@@ -977,15 +1074,15 @@ function MusicaPage() {
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:16,marginBottom:40}}>
                     {artistAlbums.map(album => (
                       <div key={album.id}
-                        style={{background:'var(--panel)',border:'1px solid var(--line)',cursor:'pointer',transition:'border-color 0.2s',borderColor: activeEmbed === album.id ? 'var(--red)' : 'var(--line)'}}
-                        onClick={() => setActiveEmbed(activeEmbed === album.id ? null : album.id)}>
+                        style={{background:'var(--panel)',border:'1px solid var(--line)',cursor:'pointer',transition:'border-color 0.2s',borderColor: 'var(--line)'}}
+                        onClick={() => openToast("album", album.id, album.name, album.release_date?.slice(0,4))}>
                         <div style={{aspectRatio:'1',overflow:'hidden',position:'relative'}}>
                           {album.images?.[0]?.url
                             ? <img src={album.images[0].url} alt={album.name} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
                             : <div style={{width:'100%',height:'100%',background:'var(--gray)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)'}}>&#9834;</div>
                           }
-                          <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',opacity: activeEmbed === album.id ? 1 : 0,transition:'opacity 0.2s'}}>
-                            <span style={{color:'#1DB954',fontSize:24}}>&#9654;</span>
+                          <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',opacity:0,transition:'opacity 0.2s'}} className="album-play-overlay">
+                            <span style={{color:'#1DB954',fontSize:28,filter:'drop-shadow(0 2px 8px rgba(0,0,0,0.8))'}}>&#9654;</span>
                           </div>
                         </div>
                         <div style={{padding:'10px 12px'}}>
@@ -994,17 +1091,6 @@ function MusicaPage() {
                             {album.album_type?.toUpperCase()} · {album.release_date?.slice(0,4)}
                           </div>
                         </div>
-                        {activeEmbed === album.id && (
-                          <iframe
-                            title={album.name}
-                            src={embedUrl('album', album.id)}
-                            width="100%" height="180"
-                            frameBorder="0"
-                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                            loading="lazy"
-                            style={{display:'block',borderTop:'1px solid var(--line)'}}
-                          />
-                        )}
                       </div>
                     ))}
                   </div>
@@ -1018,8 +1104,8 @@ function MusicaPage() {
                   <div style={{display:'flex',flexDirection:'column',gap:4,marginBottom:16}}>
                     {artistTracks.map((track, ti) => (
                       <div key={track.id}
-                        style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background: activeEmbed === 'trk-'+track.id ? 'rgba(225,6,0,0.08)' : 'var(--panel)',border:'1px solid',borderColor: activeEmbed === 'trk-'+track.id ? 'var(--red)' : 'var(--line)',cursor:'pointer',transition:'all 0.2s'}}
-                        onClick={() => setActiveEmbed(activeEmbed === 'trk-'+track.id ? null : 'trk-'+track.id)}>
+                        style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background: 'var(--panel)',border:'1px solid',borderColor: 'var(--line)',cursor:'pointer',transition:'all 0.2s'}}
+                        onClick={() => openToast("track", track.id, track.name, track.artists?.map(a=>a.name).join(", "))}>
                         <div style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--muted)',width:24,textAlign:'center',flexShrink:0}}>{ti+1}</div>
                         {track.album?.images?.[0]?.url && (
                           <img src={track.album.images[0].url} alt="" style={{width:44,height:44,objectFit:'cover',flexShrink:0}} />
@@ -1035,26 +1121,14 @@ function MusicaPage() {
                       </div>
                     ))}
                   </div>
-                  {/* Embed da faixa ativa */}
-                  {artistTracks.map(track => activeEmbed === 'trk-'+track.id && (
-                    <div key={'emb-'+track.id} style={{marginBottom:16,border:'1px solid var(--red)',borderRadius:4,overflow:'hidden'}}>
-                      <iframe
-                        title={track.name}
-                        src={embedUrl('track', track.id)}
-                        width="100%" height="80"
-                        frameBorder="0"
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy"
-                        style={{display:'block'}}
-                      />
-                    </div>
-                  ))}
                 </>
               )}
             </div>
           </section>
         );
       })}
+      {/* Toast flutuante do Spotify */}
+      <SpotifyToast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }

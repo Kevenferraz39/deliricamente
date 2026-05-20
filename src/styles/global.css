@@ -80,6 +80,11 @@ em { font-style: normal; color: var(--red); }
 .wrap { width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 var(--spacing-md); position: relative; z-index: 10; }
 .section { padding: var(--spacing-xl) 0; position: relative; }
 
+/* Garante que conteudo do hero fica acima da animacao de fundo */
+.hero { isolation: isolate; }
+.hero-grid { position: relative; z-index: 1; }
+.hero-grid > * { position: relative; z-index: 1; }
+
 .nav {
   position: fixed; top: 0; left: 0; width: 100%; background: rgba(10, 10, 10, 0.9);
   backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); z-index: 1000; padding: 1rem 0;
@@ -542,11 +547,28 @@ article ul { margin: 2rem 0; padding-left: 1.5rem; color: var(--text-body); line
   /* Login admin */
   .admin-login-card { padding: 2rem 1.25rem; }
 
-  /* Admin stats — 1 coluna em telas muito pequenas */
+  /* Admin geral */
+  .admin-main { padding: 1rem 0.75rem; }
+  .admin-head { flex-direction: column; gap: 10px; align-items: flex-start; }
+  .admin-head h1 { font-size: 2.5rem; }
+  .admin-head .user { font-size: 0.7rem; }
+
+  /* Admin stats */
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
   .stat-card .val { font-size: 2rem; }
   .stat-card .lbl { font-size: 0.65rem; }
 
+  /* Admin table — scroll horizontal no mobile */
+  .admin-table-head, .admin-table-row { min-width: 480px; }
+
+  /* Editor post */
+  .editor-title { font-size: 2rem; }
+  .editor-toolbar { flex-wrap: wrap; gap: 4px; }
+  .editor-side .box { padding: 1rem; }
+
   /* Lightbox */
   .lightbox { padding: 1rem; }
+
+  /* Admin sidebar drawer */
+  .admin-sidebar-drawer { width: 100vw; }
 }

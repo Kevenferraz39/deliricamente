@@ -1,9 +1,6 @@
-
-
 const CLIENT_ID     = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
 
-// Artistas do Deliricamente
 export const ARTIST_IDS = [
   '5PA8c8hzkgW5MhJgyWMuby',
   '1uJFG2oqOx1gPnqLe9jQtw',
@@ -11,7 +8,6 @@ export const ARTIST_IDS = [
 
 export const PLAYLIST_ID = '3IdRl1tVoQ7h7PFX4zRRMH';
 
-// Cache do token em memória
 let _cache = { token: null, expires: 0 };
 
 export async function getToken() {
@@ -34,11 +30,10 @@ export async function getToken() {
         return _cache.token;
       }
     } catch (e) {
-      console.warn('Spotify client credentials falhou, usando token do .env');
+      // silencioso
     }
   }
 
-  // Fallback: token manual do .env
   return import.meta.env.VITE_SPOTIFY_TOKEN || '';
 }
 
@@ -52,7 +47,6 @@ export async function spotifyFetch(endpoint) {
     if (!res.ok) return null;
     return res.json();
   } catch (e) {
-    console.warn('Spotify API error:', e.message);
     return null;
   }
 }
@@ -68,6 +62,8 @@ export async function getArtistAlbums(id, limit = 6) {
   return data?.items || [];
 }
 
+// top-tracks pode retornar 403 com Client Credentials em alguns casos
+// retorna array vazio silenciosamente — secao fica oculta
 export async function getArtistTopTracks(id) {
   const data = await spotifyFetch(`v1/artists/${id}/top-tracks?market=BR`);
   return data?.tracks?.slice(0, 5) || [];
@@ -77,6 +73,5 @@ export async function getPlaylist(id) {
   return spotifyFetch(`v1/playlists/${id}`);
 }
 
-// URL de embed sem autenticação
 export const embedUrl = (type, id) =>
   `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;

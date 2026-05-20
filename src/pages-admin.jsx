@@ -49,7 +49,24 @@ function AdminLogin({ onLogin, goPublic }) {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, pwd);
       await updateProfile(cred.user, { displayName: name.trim() });
-      onLogin({ name: name.trim(), role: 'editor', email: cred.user.email, uid: cred.user.uid });
+      // Novo usuario criado como leitor inativo — aguarda aprovacao do admin master
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        email: cred.user.email,
+        displayName: name.trim(),
+        role: 'user',
+        active: false,
+        photoUrl: '',
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+      });
+      await signOut(auth);
+      setErr('');
+      setMode('login');
+      // Show success via a temporary state
+      setEmail('');
+      setPwd('');
+      setName('');
+      alert('Conta criada! Aguarde o administrador ativar seu acesso. Voce sera notificado.');
     } catch (e) {
       setErr(e.code === 'auth/email-already-in-use' ? 'Este e-mail ja esta cadastrado.' : 'Erro: ' + e.message);
     }
@@ -946,7 +963,7 @@ function AdminLoja() {
 }
 
 // ---------- USERS / SETTINGS ----------
-const MASTER_ADMIN_EMAIL = 'keven.ferraz@mercadolivre.com';
+const MASTER_ADMIN_UID = 'ZtQlNzTDa1S9AsuNppbtNfpbVdI3';
 
 function ProfileEditor({ user, users }) {
   const myDoc = users.find(u => u.email === user?.email) || {};
@@ -1020,7 +1037,7 @@ function ProfileEditor({ user, users }) {
             <div>
               <div style={{ fontWeight: 600 }}>{myDoc.displayName || user?.name}</div>
               {myDoc.bio && <div className="mono" style={{ color: 'var(--muted)', fontSize: '0.78rem', marginTop: 2 }}>{myDoc.bio}</div>}
-              <div className="mono" style={{ color: 'var(--red)', marginTop: 4, fontSize: '0.78rem' }}>{(user?.role || 'EDITOR').toUpperCase()}</div>
+              <div className="mono" style={{ color: 'var(--red)', marginTop: 4, fontSize: '0.78rem' }}>{(user?.role || 'USUARIO').toUpperCase()}</div>
               <div className="mono" style={{ color: 'var(--muted)', fontSize: '0.68rem', marginTop: 2 }}>{user?.email}</div>
               {myDoc.phone && <div className="mono" style={{ color: 'var(--muted)', fontSize: '0.68rem', marginTop: 2 }}>{myDoc.phone}</div>}
             </div>
@@ -1030,14 +1047,14 @@ function ProfileEditor({ user, users }) {
     </div>
   );
 }
-const ROLES = ['editor', 'moderador', 'admin', 'admin_master'];
-const ROLE_LABELS = { editor: 'EDITOR', moderador: 'MODERADOR', admin: 'ADMIN', admin_master: 'ADMIN MASTER' };
+const ROLES = ['user', 'admin', 'admin_master'];
+const ROLE_LABELS = { user: 'USUARIO', admin: 'ADMIN', admin_master: 'ADMIN MASTER' };
 
 function AdminSettings({ user }) {
   const [users, setUsers] = React.useState([]);
   const [editingUid, setEditingUid] = React.useState(null);
   const [editForm, setEditForm] = React.useState({});
-  const isMaster = user?.email === MASTER_ADMIN_EMAIL;
+  const isMaster = user?.uid === MASTER_ADMIN_UID;
 
   React.useEffect(() => {
     const q = query(collection(db, 'users'), orderBy('lastLogin', 'desc'));
@@ -1050,7 +1067,7 @@ function AdminSettings({ user }) {
   };
 
   const toggleActive = async (u) => {
-    if (!isMaster || u.email === MASTER_ADMIN_EMAIL) return;
+    if (!isMaster || u.uid === MASTER_ADMIN_UID) return;
     await updateDoc(doc(db, 'users', u.uid), { active: !u.active });
   };
 
@@ -1086,9 +1103,9 @@ function AdminSettings({ user }) {
                     <input className="input" placeholder="Nome" value={editForm.displayName || ''} onChange={e => setEditForm(f => ({ ...f, displayName: e.target.value }))} style={{ padding: '0.4rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }} />
                     <input className="input" placeholder="URL da foto (imgbb)" value={editForm.photoUrl || ''} onChange={e => setEditForm(f => ({ ...f, photoUrl: e.target.value }))} style={{ padding: '0.4rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }} />
                   </div>
-                  {u.email !== MASTER_ADMIN_EMAIL && (
+                  {u.uid !== MASTER_ADMIN_UID && (
                     <select className="input" value={editForm.role || 'editor'} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))} style={{ padding: '0.4rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', marginBottom: 8, width: '100%' }}>
-                      {ROLES.filter(r => r !== 'admin_master').map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                      {ROLES.filter(r => r !== 'admin_master').map(r => <option key={r} value={r}>{ROLE_LABELS[r] || r.toUpperCase()}</option>)}
                     </select>
                   )}
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -1107,14 +1124,14 @@ function AdminSettings({ user }) {
                     </div>
                     <div>
                       {u.displayName || u.email?.split('@')[0]}
-                      {u.email === MASTER_ADMIN_EMAIL && <span className="mono" style={{ fontSize: '0.6rem', color: 'var(--red)', marginLeft: 6 }}>MASTER</span>}
+                      {u.uid === MASTER_ADMIN_UID && <span className="mono" style={{ fontSize: '0.6rem', color: 'var(--red)', marginLeft: 6 }}>MASTER</span>}
                     </div>
                   </div>
                   <span className="mono" style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>{u.email}</span>
-                  <span className="mono" style={{ color: 'var(--red)', fontSize: '0.78rem' }}>{ROLE_LABELS[u.role] || 'EDITOR'}</span>
+                  <span className="mono" style={{ color: 'var(--red)', fontSize: '0.78rem' }}>{ROLE_LABELS[u.role] || 'USUARIO'}</span>
                   <span className={'status-pill ' + (u.active !== false ? 'published' : 'draft')}>{u.active !== false ? 'ATIVO' : 'INATIVO'}</span>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    {isMaster && u.email !== MASTER_ADMIN_EMAIL && (
+                    {isMaster && u.uid !== MASTER_ADMIN_UID && (
                       <>
                         <button className="icon-btn" onClick={() => { setEditingUid(u.uid); setEditForm({ displayName: u.displayName, role: u.role || 'editor', photoUrl: u.photoUrl || '' }); }} title="Editar">&#9998;</button>
                         <button className="icon-btn" onClick={() => toggleActive(u)} title={u.active !== false ? 'Desativar' : 'Ativar'}
@@ -1819,39 +1836,72 @@ function AdminShell({ user, onLogout, goPublic, posts, setPosts, comments, setCo
   const [editingId, setEditingId] = React.useState(null);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
-  const moderate = (postId, idx, status) => {
+  const moderate = async (postId, idx, status) => {
+    const commentList = comments[postId] || [];
+    const comment = commentList[idx];
+    if (comment?.id) {
+      // Comentario no Firestore — atualiza via API
+      try {
+        if (status === 'deleted') await deleteDoc(doc(db, 'comments', comment.id));
+        else await updateDoc(doc(db, 'comments', comment.id), { status });
+        return;
+      } catch (e) { console.warn('moderate error:', e.message); }
+    }
+    // Fallback localStorage
     setComments(prev => {
       const next = { ...prev };
       const list = [...(next[postId] || [])];
-      if (status === "deleted") list.splice(idx, 1);
+      if (status === 'deleted') list.splice(idx, 1);
       else list[idx] = { ...list[idx], status };
       next[postId] = list;
       return next;
     });
   };
 
-  const savePost = (post) => {
-    setPosts(prev => {
-      const exists = prev.find(p => p.id === post.id);
-      if (exists) return prev.map(p => p.id === post.id ? post : p);
-      return [post, ...prev];
-    });
-    setEditingId(null);
-    setSection("posts");
+  // CRUD de posts — grava no Firestore (aparece em todos os dispositivos)
+  const savePost = async (post) => {
+    try {
+      await setDoc(doc(db, 'posts', post.id), { ...post, updatedAt: serverTimestamp() });
+    } catch (e) {
+      // fallback localStorage
+      setPosts(prev => {
+        const exists = prev.find(p => p.id === post.id);
+        if (exists) return prev.map(p => p.id === post.id ? post : p);
+        return [post, ...prev];
+      });
+    }
+    setEditingId(null); setSection("posts");
   };
 
-  const deletePost = (id) => {
+  const deletePost = async (id) => {
     if (window.confirm("Deletar este post? Essa acao nao pode ser desfeita.")) {
-      setPosts(prev => prev.filter(p => p.id !== id));
+      try {
+        await deleteDoc(doc(db, 'posts', id));
+      } catch (e) {
+        setPosts(prev => prev.filter(p => p.id !== id));
+      }
     }
   };
 
-  const updatePostCover = (id, url) => {
-    setPosts(prev => prev.map(p => p.id === id ? { ...p, cover: { ...p.cover, url } } : p));
+  const updatePostCover = async (id, url) => {
+    const post = posts.find(p => p.id === id);
+    const newCover = { ...(post?.cover || {}), url };
+    try {
+      await updateDoc(doc(db, 'posts', id), { cover: newCover });
+    } catch (e) {
+      setPosts(prev => prev.map(p => p.id === id ? { ...p, cover: newCover } : p));
+    }
   };
 
-  const toggleStatus = (id) => {
-    setPosts(prev => prev.map(p => p.id === id ? { ...p, status: p.status === "published" ? "draft" : "published" } : p));
+  const toggleStatus = async (id) => {
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    const newStatus = post.status === "published" ? "draft" : "published";
+    try {
+      await updateDoc(doc(db, 'posts', id), { status: newStatus });
+    } catch (e) {
+      setPosts(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
+    }
   };
 
   let content;
