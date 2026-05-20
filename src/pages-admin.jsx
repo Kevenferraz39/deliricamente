@@ -1817,6 +1817,7 @@ function AdminCarousel({ user }) {
 function AdminShell({ user, onLogout, goPublic, posts, setPosts, comments, setComments }) {
   const [section, setSection] = React.useState("dashboard");
   const [editingId, setEditingId] = React.useState(null);
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   const moderate = (postId, idx, status) => {
     setComments(prev => {
@@ -1890,30 +1891,55 @@ function AdminShell({ user, onLogout, goPublic, posts, setPosts, comments, setCo
     { id:"carousel",   label:"Carrossel" },
   ];
 
+  const SidebarContent = ({ onNav }) => (
+    <>
+      <div className="brand" style={{marginBottom:'2rem'}}>
+        <LogoMark size={40} />
+        <div><b>Deliricamente</b><small>// PAINEL ADMIN</small></div>
+      </div>
+      <nav className="admin-nav">
+        {navItems.map(n => (
+          <button key={n.id}
+            className={section === n.id || (n.id==="posts" && section==="editor") ? "active" : ""}
+            onClick={()=>{ setSection(n.id); if (n.id !== "editor") setEditingId(null); onNav?.(); }}>
+            <span className="dot" /> {n.label}
+          </button>
+        ))}
+      </nav>
+      <button className="logout" onClick={goPublic}>← VOLTAR AO SITE</button>
+      <button className="logout" onClick={onLogout}>SAIR DA CONTA</button>
+    </>
+  );
+
   return (
     <div className="admin-shell">
-      <aside className="admin-sidebar">
-        <div className="brand">
-          <LogoMark size={40} />
-          <div>
-            <b>Deliricamente</b>
-            <small>// PAINEL ADMIN</small>
-          </div>
+      {/* Sidebar desktop */}
+      <aside className="admin-sidebar"><SidebarContent /></aside>
+
+      {/* Header mobile com hamburguer */}
+      <div className="admin-mobile-header">
+        <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+          <LogoMark size={32} />
+          <div style={{fontFamily:'var(--font-display)',fontSize:'1rem',letterSpacing:'0.05em'}}>DELIRICAMENTE</div>
         </div>
-        <nav className="admin-nav">
-          {navItems.map(n => (
-            <button
-              key={n.id}
-              className={section === n.id || (n.id==="posts" && section==="editor") ? "active" : ""}
-              onClick={()=>{ setSection(n.id); if (n.id !== "editor") setEditingId(null); }}
-            >
-              <span className="dot" /> {n.label}
-            </button>
-          ))}
-        </nav>
-        <button className="logout" onClick={goPublic}>← VOLTAR AO SITE</button>
-        <button className="logout" onClick={onLogout}>SAIR DA CONTA</button>
-      </aside>
+        <button onClick={()=>setSidebarOpen(true)} style={{background:'transparent',border:'1px solid var(--line)',color:'var(--off-white)',padding:'6px 12px',cursor:'pointer',fontFamily:'var(--font-mono)',fontSize:'0.75rem'}}>
+          MENU &#9776;
+        </button>
+      </div>
+
+      {/* Overlay + Drawer sidebar para mobile */}
+      {sidebarOpen && (
+        <>
+          <div className="admin-sidebar-overlay" style={{display:'block'}} onClick={()=>setSidebarOpen(false)} />
+          <div className="admin-sidebar-drawer" style={{display:'flex'}}>
+            <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'1rem'}}>
+              <button onClick={()=>setSidebarOpen(false)} style={{background:'transparent',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'1.2rem'}}>&#10005;</button>
+            </div>
+            <SidebarContent onNav={()=>setSidebarOpen(false)} />
+          </div>
+        </>
+      )}
+
       <main className="admin-main page-enter">
         {content}
       </main>
