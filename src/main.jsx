@@ -223,6 +223,7 @@ function App() {
               <a className={'nav-link ' + (page === 'historia' ? 'active' : '')} onClick={() => go('historia')}>História</a>
               <a className={'nav-link ' + (page === 'blog' || page === 'post' ? 'active' : '')} onClick={() => go('blog')}>Blog</a>
               <a className={'nav-link ' + (page === 'galeria' ? 'active' : '')} onClick={() => go('galeria')}>Galeria</a>
+              <a className={'nav-link ' + (page === 'musica' ? 'active' : '')} onClick={() => go('musica')}>Musica</a>
               <a className={'nav-link ' + (page === 'loja' ? 'active' : '')} onClick={() => go('loja')}>Loja</a>
               <a className={'nav-link ' + (page === 'contato' ? 'active' : '')} onClick={() => go('contato')}>Contato</a>
               <a className="nav-cta" onClick={() => go('admin')}>Admin</a>
@@ -242,6 +243,7 @@ function App() {
             <a className="nav-link" onClick={() => go('historia')}>História</a>
             <a className="nav-link" onClick={() => go('blog')}>Blog</a>
             <a className="nav-link" onClick={() => go('galeria')}>Galeria</a>
+            <a className="nav-link" onClick={() => go('musica')}>Musica</a>
             <a className="nav-link" onClick={() => go('loja')}>Loja</a>
             <a className="nav-link" onClick={() => go('contato')}>Contato</a>
             <a className="nav-link" onClick={() => go('admin')}>Admin</a>
@@ -271,6 +273,8 @@ function App() {
     content = <window.HistoriaPage go={go} />;
   } else if (page === 'galeria') {
     content = <window.GaleriaPage />;
+  } else if (page === 'musica') {
+    content = <window.MusicaPage />;
   } else if (page === 'loja') {
     content = <window.LojaPage />;
   } else if (page === 'contato') {

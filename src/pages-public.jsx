@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import { db } from './firebase.js';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { getArtist, getArtistAlbums, getArtistTopTracks, embedUrl, ARTIST_IDS, PLAYLIST_ID } from './spotify.js';
 
 // Pegando componentes do window
 const { LogoMark, Splatter, Placeholder, Marquee, Btn, Icon, AnimatedBackground, HeroCarousel } = window;
@@ -880,6 +881,184 @@ function ContatoPage() {
   );
 }
 
+// ============================================================
+// MUSICA — Spotify: playlist, albuns e novidades
+// ============================================================
+function MusicaPage() {
+  const [artists, setArtists] = React.useState([]);
+  const [albums, setAlbums] = React.useState({});
+  const [topTracks, setTopTracks] = React.useState({});
+  const [loading, setLoading] = React.useState(true);
+  const [activeEmbed, setActiveEmbed] = React.useState(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      const artData = await Promise.all(ARTIST_IDS.map(id => getArtist(id)));
+      const albData = await Promise.all(ARTIST_IDS.map(id => getArtistAlbums(id, 8)));
+      const trkData = await Promise.all(ARTIST_IDS.map(id => getArtistTopTracks(id)));
+      if (cancelled) return;
+      setArtists(artData.filter(Boolean));
+      const albMap = {}; ARTIST_IDS.forEach((id, i) => { albMap[id] = albData[i] || []; });
+      const trkMap = {}; ARTIST_IDS.forEach((id, i) => { trkMap[id] = trkData[i] || []; });
+      setAlbums(albMap); setTopTracks(trkMap); setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  const fmtMs = (ms) => {
+    const m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000);
+    return `${m}:${String(s).padStart(2,'0')}`;
+  };
+
+  return (
+    <div className="page-enter">
+      {/* HEADER */}
+      <section className="section tight" style={{paddingTop:80, paddingBottom:0}}>
+        <div className="wrap">
+          <div className="kicker">// MUSICA · DELIRICAMENTE</div>
+          <h1 style={{fontSize:'clamp(3rem,8vw,7rem)',margin:'8px 0 8px',lineHeight:0.88}}>
+            <span style={{color:'var(--red)'}}>SONS</span><br/>
+            <span style={{color:'var(--off-white)'}}>DO COLETIVO</span>
+          </h1>
+          <p style={{color:'var(--text-body)',maxWidth:'50ch',marginBottom:'2rem'}}>
+            Ouva a playlist oficial, acompanhe os lancamentos e as faixas mais tocadas dos artistas do Deliricamente.
+          </p>
+        </div>
+      </section>
+
+      {/* PLAYLIST EMBED */}
+
+      {loading && (
+        <section className="section tight">
+          <div className="wrap">
+            <div className="mono" style={{color:'var(--muted)',textAlign:'center',padding:'4rem 0'}}>
+              Carregando dados do Spotify...
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ARTISTAS — NOVIDADES E TOP TRACKS */}
+      {artists.map((artist, ai) => {
+        if (!artist) return null;
+        const artistAlbums = albums[artist.id] || [];
+        const artistTracks = topTracks[artist.id] || [];
+
+        return (
+          <section key={artist.id} className="section" style={{paddingTop: ai === 0 ? '2rem' : '4rem'}}>
+            <div className="wrap">
+              {/* Cabecalho do artista */}
+              <div style={{display:'flex',alignItems:'center',gap:20,marginBottom:32,paddingBottom:20,borderBottom:'1px solid var(--line)'}}>
+                {artist.images?.[0]?.url && (
+                  <img src={artist.images[0].url} alt={artist.name}
+                    style={{width:72,height:72,borderRadius:'50%',objectFit:'cover',border:'2px solid var(--red)',flexShrink:0}} />
+                )}
+                <div>
+                  <div className="kicker">// ARTISTA</div>
+                  <h2 style={{fontSize:'clamp(1.8rem,4vw,3rem)',margin:'2px 0 4px',lineHeight:0.95}}>{artist.name}</h2>
+                  <div className="mono" style={{fontSize:'0.78rem',color:'var(--muted)'}}>
+                    {artist.followers?.total?.toLocaleString('pt-BR')} SEGUIDORES
+                    {artist.genres?.length > 0 && ' · ' + artist.genres.slice(0,2).join(', ').toUpperCase()}
+                  </div>
+                </div>
+                <a href={artist.external_urls?.spotify} target="_blank" rel="noopener noreferrer"
+                  style={{marginLeft:'auto',background:'#1DB954',color:'#000',padding:'8px 16px',borderRadius:20,fontFamily:'var(--font-mono)',fontSize:'0.75rem',fontWeight:700,textDecoration:'none',whiteSpace:'nowrap',flexShrink:0}}>
+                  ABRIR NO SPOTIFY
+                </a>
+              </div>
+
+              {/* LANCAMENTOS */}
+              {artistAlbums.length > 0 && (
+                <>
+                  <div className="kicker" style={{marginBottom:16}}>// LANCAMENTOS</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:16,marginBottom:40}}>
+                    {artistAlbums.map(album => (
+                      <div key={album.id}
+                        style={{background:'var(--panel)',border:'1px solid var(--line)',cursor:'pointer',transition:'border-color 0.2s',borderColor: activeEmbed === album.id ? 'var(--red)' : 'var(--line)'}}
+                        onClick={() => setActiveEmbed(activeEmbed === album.id ? null : album.id)}>
+                        <div style={{aspectRatio:'1',overflow:'hidden',position:'relative'}}>
+                          {album.images?.[0]?.url
+                            ? <img src={album.images[0].url} alt={album.name} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
+                            : <div style={{width:'100%',height:'100%',background:'var(--gray)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)'}}>&#9834;</div>
+                          }
+                          <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',opacity: activeEmbed === album.id ? 1 : 0,transition:'opacity 0.2s'}}>
+                            <span style={{color:'#1DB954',fontSize:24}}>&#9654;</span>
+                          </div>
+                        </div>
+                        <div style={{padding:'10px 12px'}}>
+                          <div style={{fontFamily:'var(--font-display)',fontSize:13,textTransform:'uppercase',lineHeight:1.2,marginBottom:4,color:'var(--off-white)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{album.name}</div>
+                          <div className="mono" style={{fontSize:'0.65rem',color:'var(--muted)'}}>
+                            {album.album_type?.toUpperCase()} · {album.release_date?.slice(0,4)}
+                          </div>
+                        </div>
+                        {activeEmbed === album.id && (
+                          <iframe
+                            title={album.name}
+                            src={embedUrl('album', album.id)}
+                            width="100%" height="180"
+                            frameBorder="0"
+                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                            loading="lazy"
+                            style={{display:'block',borderTop:'1px solid var(--line)'}}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* TOP TRACKS */}
+              {artistTracks.length > 0 && (
+                <>
+                  <div className="kicker" style={{marginBottom:16}}>// TOP FAIXAS</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:4,marginBottom:16}}>
+                    {artistTracks.map((track, ti) => (
+                      <div key={track.id}
+                        style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background: activeEmbed === 'trk-'+track.id ? 'rgba(225,6,0,0.08)' : 'var(--panel)',border:'1px solid',borderColor: activeEmbed === 'trk-'+track.id ? 'var(--red)' : 'var(--line)',cursor:'pointer',transition:'all 0.2s'}}
+                        onClick={() => setActiveEmbed(activeEmbed === 'trk-'+track.id ? null : 'trk-'+track.id)}>
+                        <div style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--muted)',width:24,textAlign:'center',flexShrink:0}}>{ti+1}</div>
+                        {track.album?.images?.[0]?.url && (
+                          <img src={track.album.images[0].url} alt="" style={{width:44,height:44,objectFit:'cover',flexShrink:0}} />
+                        )}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontFamily:'var(--font-display)',fontSize:14,textTransform:'uppercase',color:'var(--off-white)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{track.name}</div>
+                          <div className="mono" style={{fontSize:'0.7rem',color:'var(--muted)',marginTop:2}}>{track.album?.name}</div>
+                        </div>
+                        <div className="mono" style={{fontSize:'0.75rem',color:'var(--muted)',flexShrink:0}}>{fmtMs(track.duration_ms)}</div>
+                        <a href={track.external_urls?.spotify} target="_blank" rel="noopener noreferrer"
+                          onClick={e=>e.stopPropagation()}
+                          style={{color:'#1DB954',fontSize:16,flexShrink:0,textDecoration:'none'}}>&#9654;</a>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Embed da faixa ativa */}
+                  {artistTracks.map(track => activeEmbed === 'trk-'+track.id && (
+                    <div key={'emb-'+track.id} style={{marginBottom:16,border:'1px solid var(--red)',borderRadius:4,overflow:'hidden'}}>
+                      <iframe
+                        title={track.name}
+                        src={embedUrl('track', track.id)}
+                        width="100%" height="80"
+                        frameBorder="0"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                        style={{display:'block'}}
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 Object.assign(window, {
-  HomePage, BlogPage, PostPage, HistoriaPage, GaleriaPage, LojaPage, ContatoPage, Footer, fmtDate,
+  HomePage, BlogPage, PostPage, HistoriaPage, GaleriaPage, LojaPage, ContatoPage, MusicaPage, Footer, fmtDate,
 });

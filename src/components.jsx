@@ -27,6 +27,20 @@ function LogoMark({ size = 64, color = "var(--off-white)", accent = "var(--red)"
           preserveAspectRatio="xMidYMid slice"
           clipPath={'url(#' + cid + ')'} style={{opacity:0.85}} />
       )}
+      {!imageUrl && (
+        <>
+          <ellipse cx="50" cy="50" rx="40" ry="14" stroke={color} strokeWidth="1.2" />
+          <ellipse cx="50" cy="50" rx="34" ry="12" stroke={color} strokeWidth="1" opacity=".8" />
+          <ellipse cx="50" cy="50" rx="28" ry="10" stroke={color} strokeWidth="1" opacity=".6" />
+          <ellipse cx="50" cy="50" rx="22" ry="8"  stroke={color} strokeWidth="1" opacity=".45" />
+          <circle cx="50" cy="50" r="5" fill={color} />
+          <circle cx="46" cy="47" r="3" fill={color} />
+          <circle cx="54" cy="47" r="3" fill={color} />
+          <circle cx="50" cy="53" r="3" fill={color} />
+          <circle cx="47" cy="51" r="2" fill={color} />
+          <circle cx="53" cy="51" r="2" fill={color} />
+        </>
+      )}
     </svg>
   );
 }
@@ -230,6 +244,47 @@ const Icon = {
 };
 
 // --------------------------------------------------------------
+// Alfabeto Pixo Reto SP — ornado, coroado, anguloso. Grid 8x25.
+// s=serif topo, sf=serif base (decorativos angulados como coroas)
+const PIXA_CHARS = {
+  A:[[[1,24],[4,0],[7,24]],[[2.5,15],[5.5,15]],[[0,26],[2,24]],[[8,26],[6,24]],[[3.5,0],[4,0],[4.5,0]]],
+  B:[[[1,0],[1,24]],[[1,0],[6,1],[7,5],[6,11],[1,11]],[[1,11],[7,13],[7,20],[6,24],[1,24]],[[0,0],[2,0]],[[0,26],[2,24]]],
+  C:[[[7,4],[6,1],[4,0],[2,0],[1,2],[1,22],[2,24],[4,25],[6,24],[7,22]],[[2,0],[1,-1]],[[2,24],[1,26]]],
+  D:[[[1,0],[1,24]],[[1,0],[5,0],[7,4],[7,20],[5,24],[1,24]],[[0,0],[2,0]],[[0,26],[2,24]]],
+  E:[[[1,0],[1,24]],[[1,0],[7.5,0]],[[1,12],[6.5,12]],[[1,24],[7.5,24]],[[0,0],[2,0]],[[0,26],[2,24]]],
+  F:[[[1,0],[1,24]],[[1,0],[7.5,0]],[[1,12],[6.5,12]],[[0,0],[2,0]],[[0,26],[2,24]]],
+  G:[[[7,4],[5,0],[2,0],[1,2],[1,22],[2,24],[5,25],[7,23],[7,13],[4.5,13]],[[2,0],[1,-1]],[[2,24],[1,26]]],
+  H:[[[1,0],[1,24]],[[7,0],[7,24]],[[1,12],[7,12]],[[0,0],[2,0]],[[8,0],[6,0]],[[0,26],[2,24]],[[8,26],[6,24]]],
+  I:[[[1,0],[7,0]],[[4,0],[4,24]],[[1,24],[7,24]],[[0,0],[2,0]],[[8,0],[6,0]],[[0,26],[2,24]],[[8,26],[6,24]]],
+  J:[[[5,0],[5,20],[4,23],[2.5,24],[1.5,22]],[[3,0],[7,0]],[[2,0],[3,0]],[[8,0],[6,0]]],
+  K:[[[1,0],[1,24]],[[7,0],[1,12]],[[1,12],[7,24]],[[0,0],[2,0]],[[0,26],[2,24]]],
+  L:[[[1,0],[1,24]],[[1,24],[7.5,24]],[[0,0],[2,0]],[[7.5,26],[5.5,24]]],
+  M:[[[1,24],[1,0],[4,11],[7,0],[7,24]],[[0,0],[2,0]],[[8,0],[6,0]],[[0,26],[2,24]],[[8,26],[6,24]]],
+  N:[[[1,24],[1,0],[7,24],[7,0]],[[0,0],[2,0]],[[8,0],[6,0]],[[0,26],[2,24]],[[8,26],[6,24]]],
+  O:[[[4,0],[2,0],[1,3],[1,21],[2,24],[6,24],[7,21],[7,3],[6,0],[4,0]]],
+  P:[[[1,0],[1,24]],[[1,0],[6,1],[7,5],[6,12],[1,12]],[[0,0],[2,0]],[[0,26],[2,24]]],
+  Q:[[[4,0],[2,0],[1,3],[1,21],[2,24],[6,24],[7,21],[7,3],[6,0],[4,0]],[[5,18],[8,26]]],
+  R:[[[1,0],[1,24]],[[1,0],[6,1],[7,6],[5.5,13],[1,13]],[[4.5,13],[8,24]],[[0,0],[2,0]],[[8,26],[6,24]]],
+  S:[[[7.5,3],[6,0],[2.5,0],[1,3],[1.5,7],[3,10],[5,12],[6.5,15],[7,19],[6,23],[3,25],[1,23]],[[2.5,0],[1.5,-1]],[[1,23],[0,25]]],
+  T:[[[0.5,0],[7.5,0]],[[4,0],[4,24]],[[0.5,-1],[2,0]],[[7.5,-1],[6,0]],[[3,24],[5,24]]],
+  U:[[[1,0],[1,21],[2,24],[6,24],[7,21],[7,0]],[[0,0],[2,0]],[[8,0],[6,0]],[[3,25],[5,25]]],
+  V:[[[1,0],[4,24],[7,0]],[[0,0],[2,0]],[[8,0],[6,0]],[[3,26],[5,26]]],
+  W:[[[1,0],[2.5,24],[4,12],[5.5,24],[7,0]],[[0,0],[2,0]],[[8,0],[6,0]]],
+  X:[[[1,0],[7,24]],[[7,0],[1,24]],[[0,0],[2,0]],[[8,0],[6,0]],[[0,26],[2,24]],[[8,26],[6,24]]],
+  Y:[[[1,0],[4,13],[7,0]],[[4,13],[4,24]],[[0,0],[2,0]],[[8,0],[6,0]],[[3,26],[5,26]]],
+  Z:[[[1,0],[7.5,0],[1,24],[7.5,24]],[[0,0],[2,0]],[[7.5,-1],[6,0]],[[0,26],[2,24]],[[7.5,26],[6,24]]],
+};
+
+// Palavras reais do coletivo — a pichacao forma frases, nao letras aleatorias
+const PIXA_WORDS = [
+  'DELIRICAMENTE','EPIFANIA','CAIEIRAS','AGC',
+  'HIP HOP','COLETIVO','CULTURA','GUERRILHA',
+  'CONHECIMENTO','ARTE','RIMA','BATALHA',
+  'FLOW','UNDERGROUND','PERIFERIA','FORCA',
+  'RESISTENCIA','IDENTIDADE','REBELDIA','UNIAO',
+  'MUSICA','LIBERDADE','QUEBRDA','SOMA',
+];
+
 // AnimatedBackground — Canvas 2D: blobs | rede | geo | off
 // --------------------------------------------------------------
 function AnimatedBackground({ style = 'blobs', speed = 1, density = 15, opacity = 0.85 }) {
@@ -250,14 +305,37 @@ function AnimatedBackground({ style = 'blobs', speed = 1, density = 15, opacity 
 
     const CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#%&/?<>';
 
-    const makeTag = () => {
-      const sx = 40 + Math.random() * (canvas.width - 80);
-      const sy = 30 + Math.random() * (canvas.height - 60);
-      const n = 5 + Math.floor(Math.random() * 9);
-      const pts = [{ x: sx, y: sy }];
-      for (let i = 1; i < n; i++)
-        pts.push({ x: pts[i-1].x + (Math.random() - 0.5) * 140, y: pts[i-1].y + (Math.random() - 0.5) * 90 });
-      return { pts, life: 1, decay: (0.002 + Math.random() * 0.005) * speed, drawn: 0, ds: 0.04 + Math.random() * 0.1, w: 1.5 + Math.random() * 4 };
+    // Cria tag de pichacao com palavra real do coletivo
+    const makePixaTag = () => {
+      // Escolhe palavra e converte para glifos disponíveis
+      let word = PIXA_WORDS[Math.floor(Math.random() * PIXA_WORDS.length)].replace(/ /g,'');
+      let chars = word.split('').map(ch => PIXA_CHARS[ch]).filter(Boolean);
+      if (chars.length === 0) return null;
+
+      const scale = 1.8 + Math.random() * 2;
+      const charW = 10 * scale;
+      const tagH = 28 * scale;
+      let tagW = chars.length * charW;
+
+      // Se a palavra nao cabe, encurta
+      while (tagW > canvas.width - 30 && chars.length > 2) {
+        chars = chars.slice(0, chars.length - 1);
+        tagW = chars.length * charW;
+      }
+      if (tagW > canvas.width - 30 || tagH > canvas.height - 30) return null;
+
+      const totalStrokes = chars.reduce((acc, g) => acc + g.length, 0);
+      return {
+        x: 20 + Math.random() * (canvas.width - tagW - 20),
+        y: 20 + Math.random() * (canvas.height - tagH - 20),
+        chars, scale, charW,
+        life: 1,
+        decay: (0.0008 + Math.random() * 0.002) * speed,
+        drawnStrokes: 0,
+        totalStrokes,
+        strokeSpeed: Math.max(0.08, speed * 0.15),
+        strokeProgress: 0,
+      };
     };
 
     const init = () => {
@@ -290,13 +368,17 @@ function AnimatedBackground({ style = 'blobs', speed = 1, density = 15, opacity 
           bright: Math.random() > 0.88,
         }));
       } else if (style === 'spray') {
-        s.ps = Array.from({ length: Math.min(n * 5, 150) }, () => ({
-          x: Math.random() * canvas.width, y: -Math.random() * canvas.height * 0.5,
-          vx: (Math.random() - 0.5) * 1.5, vy: (0.8 + Math.random() * 2) * speed,
-          r: 1 + Math.random() * 3, life: Math.random(),
+        s.drips = [];
+        const heads = Math.min(Math.max(2, Math.floor(n / 4)), 5);
+        s.ps = Array.from({ length: heads }, () => ({
+          x: canvas.width * 0.15 + Math.random() * canvas.width * 0.7,
+          y: canvas.height * 0.05 + Math.random() * canvas.height * 0.45,
+          vx: (Math.random() - 0.5) * 0.35 * speed,
+          vy: (Math.random() - 0.5) * 0.15 * speed,
+          burst: 0,
         }));
       } else if (style === 'glitch' || style === 'pichacao') {
-        s.ps = [];
+        s.ps = []; s.drips = [];
       }
     };
 
@@ -349,43 +431,135 @@ function AnimatedBackground({ style = 'blobs', speed = 1, density = 15, opacity 
           if (p.y > canvas.height) { p.y = -16; p.bright = Math.random() > 0.88; }
         });
 
-      // --- SPRAY ---
+      // --- SPRAY (aerosol com drips reais) ---
       } else if (style === 'spray') {
-        ctx.fillStyle = 'rgba(0,0,0,0.04)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ps.forEach(p => {
-          p.x += p.vx; p.y += p.vy; p.vx += (Math.random() - 0.5) * 0.08; p.life -= 0.004;
-          if (p.y > canvas.height || p.life <= 0) {
-            p.x = Math.random() * canvas.width; p.y = -5;
-            p.vx = (Math.random() - 0.5) * 1.5; p.vy = (0.8 + Math.random() * 2) * speed;
-            p.life = 0.5 + Math.random() * 0.5; p.r = 1 + Math.random() * 3;
+        if (!s.drips) s.drips = [];
+        // Trail muito leve — tinta acumula na "parede"
+        ctx.fillStyle = 'rgba(0,0,0,0.025)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ps.forEach(head => {
+          // Move cabeca do spray lentamente
+          head.x += head.vx; head.y += head.vy;
+          if (head.x < 60 || head.x > canvas.width - 60) head.vx *= -1;
+          if (head.y < 20 || head.y > canvas.height * 0.6) head.vy *= -1;
+          head.burst = (head.burst || 0) + 1;
+
+          // Emit burst de particulas em cone (cone para baixo como spray real)
+          const emitCount = 8 + Math.floor(density * 0.6);
+          for (let i = 0; i < emitCount; i++) {
+            const angle = Math.PI * 0.5 + (Math.random() - 0.5) * 0.9;
+            const dist = Math.sqrt(Math.random()) * (35 + density * 0.5);
+            const px = head.x + Math.cos(angle) * dist;
+            const py = head.y + Math.sin(angle) * dist;
+            const r = 0.4 + Math.random() * 1.8;
+            const a = (1 - dist / 60) * opacity * (0.3 + Math.random() * 0.4);
+            if (a <= 0) continue;
+            ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.fillStyle = c + hex2(a * 255); ctx.fill();
           }
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-          ctx.fillStyle = c + hex2(Math.min(p.life, 1) * opacity * 255); ctx.fill();
+
+          // Halo difuso ao redor do spray
+          const grad = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, 50);
+          grad.addColorStop(0, c + hex2(opacity * 0.12 * 255));
+          grad.addColorStop(1, c + '00');
+          ctx.fillStyle = grad; ctx.fillRect(head.x - 50, head.y - 50, 100, 100);
+
+          // Spawna drip periodicamente
+          if (Math.random() < 0.018 * speed && s.drips.length < 18) {
+            s.drips.push({
+              x: head.x + (Math.random() - 0.5) * 30,
+              y: head.y + 15 + Math.random() * 10,
+              len: 2, maxLen: 25 + Math.random() * 90,
+              spd: (0.2 + Math.random()) * speed,
+              w: 0.8 + Math.random() * 2,
+            });
+          }
         });
 
-      // --- PICHACAO (identidade do site) ---
+        // Anima drips — caem com gravidade, teardrop na ponta
+        s.drips = s.drips.filter(d => d.y < canvas.height + 20);
+        s.drips.forEach(d => {
+          d.len = Math.min(d.len + d.spd, d.maxLen);
+          ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x, d.y + d.len);
+          ctx.strokeStyle = c + hex2(opacity * 0.75 * 255);
+          ctx.lineWidth = d.w; ctx.lineCap = 'butt'; ctx.stroke();
+          // Teardrop na ponta do drip
+          ctx.beginPath(); ctx.arc(d.x, d.y + d.len, d.w * 1.4, 0, Math.PI * 2);
+          ctx.fillStyle = c + hex2(opacity * 0.85 * 255); ctx.fill();
+          if (d.len >= d.maxLen) d.y += d.spd * 0.4;
+        });
+
+      // --- PICHACAO — glifos estilo Pixo Reto SP ---
       } else if (style === 'pichacao') {
-        ctx.fillStyle = 'rgba(0,0,0,0.018)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (!s.drips) s.drips = [];
+        // Parede: fade MUITO lento para tinta ficar visivel
+        ctx.fillStyle = 'rgba(0,0,0,0.01)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Spawn nova tag
         s.nextTag--;
         if (s.nextTag <= 0) {
-          s.tags.push(makeTag());
-          s.nextTag = Math.floor((50 + Math.random() * 100) / speed);
-          if (s.tags.length > 14) s.tags.shift();
+          const tag = makePixaTag();
+          if (tag) { s.tags.push(tag); if (s.tags.length > 6) s.tags.shift(); }
+          s.nextTag = Math.floor((80 + Math.random() * 150) / speed);
         }
+
+        // Renderiza cada tag
         s.tags = s.tags.filter(t => t.life > 0);
         s.tags.forEach(t => {
-          t.drawn = Math.min(1, t.drawn + t.ds); t.life -= t.decay;
-          const pts = t.pts; const show = Math.max(2, Math.floor(t.drawn * pts.length));
-          ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-          for (let i = 1; i < show; i++) ctx.lineTo(pts[i].x, pts[i].y);
-          ctx.strokeStyle = c + hex2(Math.min(t.life, 1) * opacity * 255);
-          ctx.lineWidth = t.w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
-          // detalhes de preenchimento (bolhas de tinta)
-          if (t.drawn > 0.5 && Math.random() < 0.015) {
-            const pt = pts[Math.floor(Math.random() * show)];
-            ctx.beginPath(); ctx.arc(pt.x + (Math.random()-0.5)*8, pt.y + (Math.random()-0.5)*8, 1 + Math.random()*2.5, 0, Math.PI * 2);
-            ctx.fillStyle = c + hex2(t.life * opacity * 0.7 * 255); ctx.fill();
+          t.life -= t.decay;
+          const alpha = Math.min(t.life, 1) * opacity;
+
+          // Avanca o desenho progressivo
+          t.strokeProgress = Math.min(t.totalStrokes, t.strokeProgress + t.strokeSpeed);
+          const strokesToDraw = Math.floor(t.strokeProgress);
+
+          ctx.save();
+          ctx.lineCap = 'square'; ctx.lineJoin = 'miter'; ctx.miterLimit = 8;
+
+          let strokeIdx = 0;
+          let ox = t.x;
+
+          t.chars.forEach(glyph => {
+            glyph.forEach(stroke => {
+              if (strokeIdx >= strokesToDraw) { strokeIdx++; return; }
+              ctx.strokeStyle = c + hex2(alpha * 255);
+              ctx.lineWidth = Math.max(1, t.scale * 0.45);
+              ctx.beginPath();
+              ctx.moveTo(ox + stroke[0][0] * t.scale, t.y + stroke[0][1] * t.scale);
+              for (let i = 1; i < stroke.length; i++) {
+                ctx.lineTo(ox + stroke[i][0] * t.scale, t.y + stroke[i][1] * t.scale);
+              }
+              ctx.stroke();
+
+              // Gotinha de tinta no inicio do traco (efeito de spray de lata)
+              if (Math.random() < 0.08) {
+                const ep = stroke[stroke.length - 1];
+                ctx.beginPath();
+                ctx.arc(ox + ep[0] * t.scale, t.y + ep[1] * t.scale, t.scale * 0.25, 0, Math.PI * 2);
+                ctx.fillStyle = c + hex2(alpha * 0.6 * 255); ctx.fill();
+              }
+              strokeIdx++;
+            });
+            ox += t.charW;
+          });
+          ctx.restore();
+
+          // Spawn drip da tag quando alpha alto
+          if (alpha > 0.5 && Math.random() < 0.004 * speed && s.drips.length < 10) {
+            const cx = t.x + Math.random() * t.chars.length * t.charW;
+            const cy = t.y + 22 * t.scale;
+            s.drips.push({ x: cx, y: cy, len: 0, maxLen: 8 + Math.random() * 25, spd: 0.15 * speed, w: 0.7 });
           }
+        });
+
+        // Drips da pichacao
+        s.drips = s.drips.filter(d => d.y < canvas.height + 10);
+        s.drips.forEach(d => {
+          d.len = Math.min(d.len + d.spd, d.maxLen);
+          ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x, d.y + d.len);
+          ctx.strokeStyle = c + hex2(opacity * 0.6 * 255);
+          ctx.lineWidth = d.w; ctx.lineCap = 'round'; ctx.stroke();
+          if (d.len >= d.maxLen) d.y += d.spd * 0.3;
         });
 
       // --- BLOBS / REDE / GEO (com clearRect) ---
