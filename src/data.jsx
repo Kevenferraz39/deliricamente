@@ -195,4 +195,4 @@
     },
   ];
   
-  Object.assign(window, { SEED_POSTS, TIMELINE, GALLERY, AGENDA, COLLECTIVES });
+export { SEED_POSTS, TIMELINE, GALLERY, AGENDA, COLLECTIVES };

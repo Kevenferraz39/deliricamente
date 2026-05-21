@@ -1,15 +1,29 @@
-﻿import React from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { db, auth } from './firebase.js';
 import { doc, collection, addDoc, setDoc, updateDoc, deleteDoc, getDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import './styles/global.css';
 
-// A ORDEM AQUI É IMPORTANTE! O components e o data precisam carregar antes.
-import './components.jsx';
-import './data.jsx';
-import './pages-public.jsx';
-import './pages-admin.jsx';
+import { AppContext } from './context/AppContext';
+import { SEED_POSTS } from './data';
+import { LogoMark, Icon } from './components';
+
+import HomePage from './pages/HomePage';
+import BlogPage from './pages/BlogPage';
+import PostPage from './pages/PostPage';
+import HistoriaPage from './pages/HistoriaPage';
+import GaleriaPage from './pages/GaleriaPage';
+import MusicaPage from './pages/MusicaPage';
+import LojaPage from './pages/LojaPage';
+import ContatoPage from './pages/ContatoPage';
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminShell from './pages/admin/AdminShell';
+import NotFoundPage from './pages/NotFoundPage';
+import UserProfilePage from './pages/UserProfilePage';
+import ErrorPage from './pages/ErrorPage';
+import Footer from './components/Footer';
 
 // Lista de termos ofensivos para auto-moderacao de comentarios
 const OFFENSIVE_TERMS = [
@@ -27,57 +41,139 @@ const detectOffensive = (text) => {
   return OFFENSIVE_TERMS.filter(t => n.includes(norm(t)));
 };
 
-// UID do desenvolvedor/admin master — acesso total irrestrito
 const MASTER_UID = 'ZtQlNzTDa1S9AsuNppbtNfpbVdI3';
 
-// Injeta dinamicamente uma fonte do Google Fonts se ainda não carregada
 function loadGoogleFont(name) {
   const id = `gfont-${name.replace(/\s+/g, '-')}`;
   if (document.getElementById(id)) return;
   const link = document.createElement('link');
-  link.id = id;
-  link.rel = 'stylesheet';
+  link.id = id; link.rel = 'stylesheet';
   link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;700&display=swap`;
   document.head.appendChild(link);
 }
 
 // ============================================================
-// APP SHELL — gerencia navegação, estado e persistência
+// NAV
+// ============================================================
+function Nav() {
+  const { user, navLogoUrl, mobileNav, setMobileNav } = React.useContext(AppContext);
+  const location = useLocation();
+
+  if (location.pathname.startsWith('/admin')) return null;
+
+  const isAdmin = (u) => u && (u.isMaster || u.role === 'admin' || u.role === 'admin_master');
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
+  return (
+    <>
+      <nav className="nav">
+        <div className="wrap nav-inner">
+          <Link className="nav-brand" to="/" style={{ textDecoration: 'none' }}>
+            {navLogoUrl
+              ? <img src={navLogoUrl} alt="Logo" style={{ width: 40, height: 40, objectFit: 'contain', display: 'block' }} />
+              : <LogoMark size={40} />
+            }
+            <div>
+              Deliricamente
+              <small>// CAIEIRAS · SP</small>
+            </div>
+          </Link>
+
+          <div className="nav-links">
+            <Link className={'nav-link ' + (isActive('/') && location.pathname === '/' ? 'active' : '')} to="/">Início</Link>
+            <Link className={'nav-link ' + (isActive('/historia') ? 'active' : '')} to="/historia">História</Link>
+            <Link className={'nav-link ' + (isActive('/blog') ? 'active' : '')} to="/blog">Blog</Link>
+            <Link className={'nav-link ' + (isActive('/galeria') ? 'active' : '')} to="/galeria">Galeria</Link>
+            <Link className={'nav-link ' + (isActive('/musica') ? 'active' : '')} to="/musica">Música</Link>
+            <Link className={'nav-link ' + (isActive('/loja') ? 'active' : '')} to="/loja">Loja</Link>
+            <Link className={'nav-link ' + (isActive('/contato') ? 'active' : '')} to="/contato">Contato</Link>
+            {isAdmin(user)
+              ? <Link className="nav-cta" to="/admin/dashboard">Admin</Link>
+              : <Link to={user ? '/perfil' : '/admin'} className="nav-user-btn" title={user ? user.name : 'Entrar'}>
+                  {user
+                    ? <span className="nav-user-avatar">{(user.name || '?')[0].toUpperCase()}</span>
+                    : <Icon.User />
+                  }
+                </Link>
+            }
+          </div>
+
+          <button className="nav-burger" onClick={() => setMobileNav(!mobileNav)}>
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </nav>
+
+      {mobileNav && (
+        <div className="nav-mobile">
+          <Link className="nav-link" to="/" onClick={() => setMobileNav(false)}>Início</Link>
+          <Link className="nav-link" to="/historia" onClick={() => setMobileNav(false)}>História</Link>
+          <Link className="nav-link" to="/blog" onClick={() => setMobileNav(false)}>Blog</Link>
+          <Link className="nav-link" to="/galeria" onClick={() => setMobileNav(false)}>Galeria</Link>
+          <Link className="nav-link" to="/musica" onClick={() => setMobileNav(false)}>Música</Link>
+          <Link className="nav-link" to="/loja" onClick={() => setMobileNav(false)}>Loja</Link>
+          <Link className="nav-link" to="/contato" onClick={() => setMobileNav(false)}>Contato</Link>
+          {isAdmin(user)
+            ? <Link className="nav-cta" to="/admin/dashboard" onClick={() => setMobileNav(false)}>Admin</Link>
+            : <Link className="nav-link" to={user ? '/perfil' : '/admin'} onClick={() => setMobileNav(false)}>
+                {user ? `${(user.name || '').split(' ')[0]} · Perfil` : 'Entrar'}
+              </Link>
+          }
+        </div>
+      )}
+    </>
+  );
+}
+
+// ============================================================
+// PROTECTED ROUTE — apenas admins
+// ============================================================
+const isAdminUser = (u) => u && (u.isMaster || u.role === 'admin' || u.role === 'admin_master');
+
+function ProtectedRoute({ children }) {
+  const { user } = React.useContext(AppContext);
+  if (!user) return <Navigate to="/admin" replace />;
+  if (!isAdminUser(user)) return <Navigate to="/perfil" replace />;
+  return children;
+}
+
+// ============================================================
+// FOOTER WRAPPER
+// ============================================================
+function FooterWrapper() {
+  const location = useLocation();
+  if (location.pathname.startsWith('/admin')) return null;
+  return <Footer />;
+}
+
+// ============================================================
+// APP
 // ============================================================
 function App() {
-  // State management
   const [posts, setPosts] = React.useState(() => {
-    const saved = localStorage.getItem('deliricamente_posts');
-    return saved ? JSON.parse(saved) : window.SEED_POSTS;
+    try { const saved = localStorage.getItem('deliricamente_posts'); return saved ? JSON.parse(saved) : SEED_POSTS; }
+    catch { return SEED_POSTS; }
   });
 
-  // Referencia para controlar migração única
   const migratedPostsRef = React.useRef(false);
 
-  // Sincroniza posts com Firestore — migra automaticamente quando o banco está vazio
   React.useEffect(() => {
     const localPosts = (() => {
-      try { const s = localStorage.getItem('deliricamente_posts'); return s ? JSON.parse(s) : window.SEED_POSTS; }
-      catch { return window.SEED_POSTS; }
+      try { const s = localStorage.getItem('deliricamente_posts'); return s ? JSON.parse(s) : SEED_POSTS; }
+      catch { return SEED_POSTS; }
     })();
-
     try {
       const q = query(collection(db, 'posts'), orderBy('date', 'desc'));
       const unsub = onSnapshot(q, async snap => {
         const firestorePosts = snap.docs.map(d => ({ ...d.data(), id: d.id }));
         if (firestorePosts.length > 0) {
-          // Firestore tem posts — usa eles (aparece em todos os devices)
           setPosts(firestorePosts);
         } else if (!migratedPostsRef.current) {
-          // Firestore vazio — migra todos os posts locais/seed para o banco
           migratedPostsRef.current = true;
-          console.log('Migrando', localPosts.length, 'posts para o Firestore...');
-          await Promise.all(
-            localPosts.map(post =>
-              setDoc(doc(db, 'posts', post.id), { ...post }).catch(e => console.warn('migração post:', e.message))
-            )
-          );
-          console.log('Migração de posts concluída!');
+          await Promise.all(localPosts.map(post => setDoc(doc(db, 'posts', post.id), { ...post }).catch(e => console.warn('migração post:', e.message))));
         }
       });
       return () => unsub();
@@ -85,15 +181,14 @@ function App() {
   }, []);
 
   const [comments, setComments] = React.useState(() => {
-    const saved = localStorage.getItem('deliricamente_comments');
-    return saved ? JSON.parse(saved) : {};
+    try { const saved = localStorage.getItem('deliricamente_comments'); return saved ? JSON.parse(saved) : {}; }
+    catch { return {}; }
   });
 
-  // Sincroniza comentarios com Firestore
   React.useEffect(() => {
     try {
       const unsub = onSnapshot(query(collection(db, 'comments'), orderBy('date', 'desc')), snap => {
-        if (snap.empty) return; // mantém localStorage se Firestore vazio
+        if (snap.empty) return;
         const byPost = {};
         snap.docs.forEach(d => {
           const c = { id: d.id, ...d.data() };
@@ -107,79 +202,41 @@ function App() {
   }, []);
 
   const [user, setUser] = React.useState(null);
-
-  const [page, setPage] = React.useState('home');
-  const [pageData, setPageData] = React.useState(null);
   const [mobileNav, setMobileNav] = React.useState(false);
   const [bgConfig, setBgConfig] = React.useState({ style: 'blobs', speed: 1, density: 15, opacity: 0.85 });
   const [carouselConfig, setCarouselConfig] = React.useState({ enabled: false, slides: [], autoPlay: true, interval: 5 });
   const [heroLogoUrl, setHeroLogoUrl] = React.useState('');
   const [navLogoUrl, setNavLogoUrl] = React.useState('https://i.ibb.co/nM8qGYxn/images-removebg-preview.png');
 
-  // Persist to localStorage
-  React.useEffect(() => {
-    localStorage.setItem('deliricamente_posts', JSON.stringify(posts));
-  }, [posts]);
+  React.useEffect(() => { localStorage.setItem('deliricamente_posts', JSON.stringify(posts)); }, [posts]);
+  React.useEffect(() => { localStorage.setItem('deliricamente_comments', JSON.stringify(comments)); }, [comments]);
 
-  React.useEffect(() => {
-    localStorage.setItem('deliricamente_comments', JSON.stringify(comments));
-  }, [comments]);
-
-  // Auth via Firebase — mantém sessão e cria/atualiza doc do usuario no Firestore
   React.useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         const isMaster = fbUser.uid === MASTER_UID;
         try {
-          // Le role atual do Firestore para nao sobrescrever
           const snap = await getDoc(doc(db, 'users', fbUser.uid));
           const existingRole = snap.exists() ? snap.data().role : null;
           const role = isMaster ? 'admin_master' : (existingRole || 'user');
-
-          setUser({
-            name: fbUser.displayName || fbUser.email.split('@')[0],
-            role,
-            email: fbUser.email,
-            uid: fbUser.uid,
-            isMaster,
-          });
-
-          const docData = {
-            email: fbUser.email,
-            displayName: fbUser.displayName || fbUser.email.split('@')[0],
-            photoUrl: fbUser.photoURL || '',
-            lastLogin: serverTimestamp(),
-          };
-          // So define role se nao existir (preserva roles ja definidos pelo admin)
-          if (!existingRole || isMaster) {
-            docData.role = isMaster ? 'admin_master' : 'user';
-            docData.active = true;
-          }
+          setUser({ name: fbUser.displayName || fbUser.email.split('@')[0], role, email: fbUser.email, uid: fbUser.uid, isMaster });
+          const docData = { email: fbUser.email, displayName: fbUser.displayName || fbUser.email.split('@')[0], photoUrl: fbUser.photoURL || '', lastLogin: serverTimestamp() };
+          if (!existingRole || isMaster) { docData.role = isMaster ? 'admin_master' : 'user'; docData.active = true; }
           await setDoc(doc(db, 'users', fbUser.uid), docData, { merge: true });
         } catch (e) {
-          setUser({
-            name: fbUser.displayName || fbUser.email.split('@')[0],
-            role: isMaster ? 'admin_master' : 'user',
-            email: fbUser.email,
-            uid: fbUser.uid,
-            isMaster,
-          });
+          setUser({ name: fbUser.displayName || fbUser.email.split('@')[0], role: isMaster ? 'admin_master' : 'user', email: fbUser.email, uid: fbUser.uid, isMaster });
           console.warn('User doc:', e.message);
         }
-      } else {
-        setUser(null);
-      }
+      } else { setUser(null); }
     });
     return () => unsub();
   }, []);
 
-  // Tema dinâmico via Firestore — propaga para todos os usuários em tempo real
   React.useEffect(() => {
     try {
       const unsub = onSnapshot(doc(db, 'config', 'theme'), (snap) => {
         if (!snap.exists()) return;
-        const t = snap.data();
-        const r = document.documentElement;
+        const t = snap.data(); const r = document.documentElement;
         if (t.accent)      r.style.setProperty('--red',        t.accent);
         if (t.background)  r.style.setProperty('--black',      t.background);
         if (t.offWhite)    r.style.setProperty('--off-white',  t.offWhite);
@@ -187,7 +244,7 @@ function App() {
         if (t.gray)        r.style.setProperty('--gray',       t.gray);
         if (t.muted)       r.style.setProperty('--muted',      t.muted);
         if (t.paper)       r.style.setProperty('--paper',      t.paper);
-        if (t.textBody)    r.style.setProperty('--text-body',   t.textBody);
+        if (t.textBody)    r.style.setProperty('--text-body',  t.textBody);
         if (t.heroLogoUrl !== undefined) setHeroLogoUrl(t.heroLogoUrl || '');
         if (t.navLogoUrl !== undefined) setNavLogoUrl(t.navLogoUrl || 'https://i.ibb.co/nM8qGYxn/images-removebg-preview.png');
         if (t.fontDisplay) { loadGoogleFont(t.fontDisplay); r.style.setProperty('--font-display', `'${t.fontDisplay}', sans-serif`); }
@@ -195,54 +252,26 @@ function App() {
         if (t.fontMono)    { loadGoogleFont(t.fontMono);    r.style.setProperty('--font-mono',    `'${t.fontMono}', monospace`); }
       });
       return () => unsub();
-    } catch (e) {
-      console.warn('Theme sync indisponível:', e.message);
-    }
+    } catch (e) { console.warn('Theme sync:', e.message); }
   }, []);
 
-  // Configs de fundo animado e carrossel em tempo real
   React.useEffect(() => {
     try {
-      const u1 = onSnapshot(doc(db, 'config', 'background'), (snap) => {
-        if (snap.exists()) setBgConfig(c => ({ ...c, ...snap.data() }));
-      });
-      const u2 = onSnapshot(doc(db, 'config', 'carousel'), (snap) => {
-        if (snap.exists()) setCarouselConfig(c => ({ ...c, ...snap.data() }));
-      });
+      const u1 = onSnapshot(doc(db, 'config', 'background'), (snap) => { if (snap.exists()) setBgConfig(c => ({ ...c, ...snap.data() })); });
+      const u2 = onSnapshot(doc(db, 'config', 'carousel'), (snap) => { if (snap.exists()) setCarouselConfig(c => ({ ...c, ...snap.data() })); });
       return () => { u1(); u2(); };
-    } catch (e) {
-      console.warn('Config sync indisponível:', e.message);
-    }
+    } catch (e) { console.warn('Config sync:', e.message); }
   }, []);
 
-  // Navigation
-  const go = (newPage, data = null) => {
-    setPage(newPage);
-    setPageData(data);
-    setMobileNav(false);
-    window.scrollTo(0, 0);
-  };
-
-  // Comments functions
-  const getComments = (postId) => {
-    return (comments[postId] || []).filter(c => c.status === 'approved');
-  };
+  const getComments = (postId) => (comments[postId] || []).filter(c => c.status === 'approved');
 
   const addComment = async (postId, comment) => {
     const flaggedTerms = detectOffensive(comment.text || '');
     const status = flaggedTerms.length > 0 ? 'flagged' : 'approved';
-    const newComment = {
-      ...comment,
-      postId,
-      status,
-      date: new Date().toISOString(),
-      ...(flaggedTerms.length > 0 ? { flaggedTerms, flaggedAt: new Date().toISOString() } : {}),
-    };
+    const newComment = { ...comment, postId, status, date: new Date().toISOString(), ...(flaggedTerms.length > 0 ? { flaggedTerms, flaggedAt: new Date().toISOString() } : {}) };
     try {
-      // Salva no Firestore — aparece em todos os dispositivos
       await addDoc(collection(db, 'comments'), newComment);
       if (status === 'approved') {
-        // Incrementa contador de comentarios no post
         setPosts(prev => {
           const next = prev.map(p => p.id === postId ? { ...p, comments: (p.comments||0)+1 } : p);
           const updated = next.find(p => p.id === postId);
@@ -251,18 +280,11 @@ function App() {
         });
       }
     } catch (e) {
-      // Fallback localStorage se Firestore indisponivel
-      setComments(prev => ({
-        ...prev,
-        [postId]: [...(prev[postId] || []), newComment]
-      }));
-      if (status === 'approved') {
-        setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: (p.comments||0)+1 } : p));
-      }
+      setComments(prev => ({ ...prev, [postId]: [...(prev[postId] || []), newComment] }));
+      if (status === 'approved') setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: (p.comments||0)+1 } : p));
     }
   };
 
-  // Like/reaction functions — atualiza Firestore e estado local
   const toggleLike = (postId, type, add) => {
     setPosts(prev => {
       const next = prev.map(p => p.id === postId ? { ...p, [type]: p[type] + (add ? 1 : -1) } : p);
@@ -272,155 +294,60 @@ function App() {
     });
   };
 
-  // Auth functions — roteamento por role
+  // login — usado pelo AdminLogin
   const login = async (userData) => {
     try {
       const snap = await getDoc(doc(db, 'users', userData.uid));
       const firestoreRole = snap.exists() ? snap.data().role : 'user';
       const isActive = snap.exists() ? snap.data().active !== false : true;
-
-      if (!isActive) {
-        await signOut(auth);
-        alert('Sua conta esta inativa. Entre em contato com o administrador.');
-        return;
-      }
-
+      if (!isActive) { await signOut(auth); alert('Sua conta esta inativa.'); return; }
       const fullUser = { ...userData, role: firestoreRole };
       setUser(fullUser);
-
-      if (userData.isMaster || firestoreRole === 'admin_master' || firestoreRole === 'admin') {
-        // Admins vao para o painel
-        go('admin-dashboard');
-      } else {
-        // Users comuns ficam no site publico (logados para comentar, curtir, etc.)
-        go('home');
-      }
-    } catch (e) {
-      if (userData.isMaster) { setUser(userData); go('admin-dashboard'); }
-      else { setUser(userData); go('home'); }
-    }
+    } catch (e) { setUser(userData); }
   };
 
-  const logout = () => {
-    signOut(auth);
-    go('home');
+  const logout = () => { signOut(auth); setUser(null); };
+
+  const contextValue = {
+    posts, setPosts,
+    comments, setComments,
+    user,
+    bgConfig,
+    carouselConfig,
+    heroLogoUrl,
+    navLogoUrl,
+    mobileNav, setMobileNav,
+    login, logout,
+    getComments, addComment, toggleLike,
   };
-
-  // Navigation component
-  const Nav = () => {
-    if (page.startsWith('admin')) return null;
-
-    return (
-      <>
-        <nav className="nav">
-          <div className="wrap nav-inner">
-            <a className="nav-brand" onClick={() => go('home')} style={{ cursor: 'pointer' }}>
-              {navLogoUrl
-                ? <img src={navLogoUrl} alt="Logo" style={{ width: 40, height: 40, objectFit: 'contain', display: 'block' }} />
-                : <window.LogoMark size={40} />
-              }
-              <div>
-                Deliricamente
-                <small>// CAIEIRAS · SP</small>
-              </div>
-            </a>
-
-            <div className="nav-links">
-              <a className={'nav-link ' + (page === 'home' ? 'active' : '')} onClick={() => go('home')}>Início</a>
-              <a className={'nav-link ' + (page === 'historia' ? 'active' : '')} onClick={() => go('historia')}>História</a>
-              <a className={'nav-link ' + (page === 'blog' || page === 'post' ? 'active' : '')} onClick={() => go('blog')}>Blog</a>
-              <a className={'nav-link ' + (page === 'galeria' ? 'active' : '')} onClick={() => go('galeria')}>Galeria</a>
-              <a className={'nav-link ' + (page === 'musica' ? 'active' : '')} onClick={() => go('musica')}>Musica</a>
-              <a className={'nav-link ' + (page === 'loja' ? 'active' : '')} onClick={() => go('loja')}>Loja</a>
-              <a className={'nav-link ' + (page === 'contato' ? 'active' : '')} onClick={() => go('contato')}>Contato</a>
-              <a className="nav-cta" onClick={() => go('admin')}>Admin</a>
-            </div>
-
-            <button className="nav-burger" onClick={() => setMobileNav(!mobileNav)}>
-              <span></span>
-              <span></span>
-              <span></span>
-            </button>
-          </div>
-        </nav>
-
-        {mobileNav && (
-          <div className="nav-mobile">
-            <a className="nav-link" onClick={() => go('home')}>Início</a>
-            <a className="nav-link" onClick={() => go('historia')}>História</a>
-            <a className="nav-link" onClick={() => go('blog')}>Blog</a>
-            <a className="nav-link" onClick={() => go('galeria')}>Galeria</a>
-            <a className="nav-link" onClick={() => go('musica')}>Musica</a>
-            <a className="nav-link" onClick={() => go('loja')}>Loja</a>
-            <a className="nav-link" onClick={() => go('contato')}>Contato</a>
-            <a className="nav-link" onClick={() => go('admin')}>Admin</a>
-          </div>
-        )}
-      </>
-    );
-  };
-
-  // Page rendering
-  let content;
-
-  if (page === 'home') {
-    content = <window.HomePage posts={posts} go={go} bgConfig={bgConfig} carouselConfig={carouselConfig} heroLogoUrl={heroLogoUrl} />;
-  } else if (page === 'blog') {
-    content = <window.BlogPage posts={posts} go={go} />;
-  } else if (page === 'post') {
-    content = <window.PostPage
-      postId={pageData}
-      posts={posts}
-      go={go}
-      getComments={getComments}
-      addComment={addComment}
-      toggleLike={toggleLike}
-      user={user}
-    />;
-  } else if (page === 'historia') {
-    content = <window.HistoriaPage go={go} />;
-  } else if (page === 'galeria') {
-    content = <window.GaleriaPage />;
-  } else if (page === 'musica') {
-    content = <window.MusicaPage />;
-  } else if (page === 'loja') {
-    content = <window.LojaPage />;
-  } else if (page === 'contato') {
-    content = <window.ContatoPage />;
-  } else if (page === 'admin') {
-    if (user) {
-      go('admin-dashboard');
-      return null;
-    }
-    content = <window.AdminLogin onLogin={login} goPublic={() => go('home')} />;
-  } else if (page === 'admin-dashboard' || page.startsWith('admin-')) {
-    if (!user) {
-      go('admin');
-      return null;
-    }
-    content = <window.AdminShell
-      user={user}
-      onLogout={logout}
-      goPublic={() => go('home')}
-      posts={posts}
-      setPosts={setPosts}
-      comments={comments}
-      setComments={setComments}
-    />;
-  }
 
   return (
-    <>
-      <Nav />
-      {content}
-      {!page.startsWith('admin') && <window.Footer go={go} />}
-    </>
+    <AppContext.Provider value={contextValue}>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Nav />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:postId" element={<PostPage />} />
+          <Route path="/historia" element={<HistoriaPage />} />
+          <Route path="/galeria" element={<GaleriaPage />} />
+          <Route path="/musica" element={<MusicaPage />} />
+          <Route path="/loja" element={<LojaPage />} />
+          <Route path="/contato" element={<ContatoPage />} />
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/*" element={
+            <ProtectedRoute><AdminShell /></ProtectedRoute>
+          } />
+          <Route path="/perfil" element={<UserProfilePage />} />
+          <Route path="/error/:code" element={<ErrorPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+        <FooterWrapper />
+      </BrowserRouter>
+    </AppContext.Provider>
   );
 }
 
-// Mount app
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
+  <React.StrictMode><App /></React.StrictMode>
 );

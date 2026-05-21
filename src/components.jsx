@@ -1,4 +1,5 @@
 ﻿import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 /* ============================================================
    Shared visual primitives for the Deliricamente site
@@ -239,6 +240,12 @@ const Icon = {
   Close: (p) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" {...p}>
       <path d="M5 5l14 14M19 5L5 19" />
+    </svg>
+  ),
+  User: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="16" height="16" {...p}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
   ),
 };
@@ -614,6 +621,7 @@ function AnimatedBackground({ style = 'blobs', speed = 1, density = 15, opacity 
 // HeroCarousel — slides com imagem, titulo, CTA e auto-play
 // --------------------------------------------------------------
 function HeroCarousel({ slides = [], autoPlay = true, interval = 5, go }) {
+  const navigate = useNavigate();
   const [cur, setCur] = React.useState(0);
   const [fade, setFade] = React.useState(false);
   const total = slides.length;
@@ -692,7 +700,7 @@ function HeroCarousel({ slides = [], autoPlay = true, interval = 5, go }) {
                 {s.kicker && <div className="kicker">{s.kicker}</div>}
                 {s.title && <h2 style={{ fontSize: 'clamp(1.8rem, 4.2vw, 3.8rem)', margin: '6px 0 12px', lineHeight: 0.92, color: 'var(--off-white)' }}>{s.title}</h2>}
                 {s.subtitle && <p style={{ color: 'var(--text-body)', maxWidth: '42ch', marginBottom: 20, fontSize: 'clamp(0.9rem, 1.4vw, 1.05rem)' }}>{s.subtitle}</p>}
-                {s.ctaText && <Btn variant="red" arrow onClick={() => s.ctaPage && go && go(s.ctaPage)}>{s.ctaText}</Btn>}
+                {s.ctaText && <Btn variant="red" arrow onClick={() => s.ctaPage && navigate('/' + (s.ctaPage || ''))}>{s.ctaText}</Btn>}
               </div>
             </div>
           )}
@@ -724,7 +732,4 @@ function HeroCarousel({ slides = [], autoPlay = true, interval = 5, go }) {
   );
 }
 
-Object.assign(window, {
-  LogoMark, Splatter, Placeholder, Marquee, Btn, Icon,
-  AnimatedBackground, HeroCarousel,
-});
+export { LogoMark, Splatter, Placeholder, Marquee, Btn, Icon, AnimatedBackground, HeroCarousel };
