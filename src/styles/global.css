@@ -591,6 +591,9 @@ article ul { margin: 2rem 0; padding-left: 1.5rem; color: var(--text-body); line
 /* ============================================================
    PÁGINA MÚSICA — SPOTIFY
    ============================================================ */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 @keyframes spFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }

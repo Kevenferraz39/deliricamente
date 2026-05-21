@@ -2,6 +2,8 @@ import React from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Btn, Icon } from '../components';
+// Segurança: importações disponíveis para futuras funcionalidades de edição
+import { sanitizeText, validateDisplayName, validateEmail } from '../security/sanitize.js';
 
 export default function UserProfilePage() {
   const { user, logout, comments, posts } = useApp();

@@ -6,6 +6,9 @@ import { LogoMark, Btn, Icon, Placeholder } from '../../components';
 import { TIMELINE } from '../../data';
 import { useApp } from '../../context/AppContext';
 import { fmtDate } from '../HomePage';
+import LogsPage from './LogsPage';
+import { sanitizeText, validateDisplayName, validateUrl } from '../../security/sanitize.js';
+import { logAdminAction, LOG_ACTIONS } from '../../security/auditLogger.js';
 
 // Helper compartilhado de upload via imgbb
 const uploadImg = async (file) => {
@@ -736,8 +739,22 @@ function ProfileEditor({ user, users }) {
   };
 
   const save = async () => {
-    if (!user?.uid) return; setSaving(true);
-    await setDoc(doc(db, 'users', user.uid), { ...form, updatedAt: serverTimestamp() }, { merge: true });
+    if (!user?.uid) return;
+
+    // Sanitização dos campos antes de salvar
+    const sanitizedForm = {
+      displayName: sanitizeText(form.displayName, 50).trim(),
+      bio:         sanitizeText(form.bio, 200).trim(),
+      phone:       sanitizeText(form.phone, 20).replace(/[^0-9\s\+\-\(\)]/g, '').trim(),
+      photoUrl:    validateUrl(form.photoUrl) ? form.photoUrl.trim() : '',
+    };
+
+    // Valida nome
+    const nameCheck = validateDisplayName(sanitizedForm.displayName);
+    if (!nameCheck.valid) { alert(nameCheck.error); return; }
+
+    setSaving(true);
+    await setDoc(doc(db, 'users', user.uid), { ...sanitizedForm, updatedAt: serverTimestamp() }, { merge: true });
     setSaving(false); setEditing(false);
   };
 
@@ -1293,6 +1310,9 @@ export default function AdminShell() {
   else if (section === "galeria") content = <AdminGaleria />;
   else if (section === "timeline") content = <AdminTimeline />;
   else if (section === "loja") content = <AdminLoja />;
+  else if (section === "logs") content = <LogsPage />;
+
+  const isMasterUser = user?.isMaster || user?.uid === MASTER_ADMIN_UID;
 
   const navItems = [
     { id:"dashboard", label:"Dashboard" },
@@ -1305,6 +1325,7 @@ export default function AdminShell() {
     { id:"theme", label:"Tema do Site" },
     { id:"background", label:"Fundo Animado" },
     { id:"carousel", label:"Carrossel" },
+    ...(isMasterUser ? [{ id:"logs", label:"Logs de Auditoria" }] : []),
   ];
 
   const SidebarContent = ({ onNav }) => (

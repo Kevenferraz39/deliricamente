@@ -1,0 +1,122 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Constantes ──────────────────────────────────────────────────
+    // UID do administrador master (hardcoded por segurança)
+    function masterUid() {
+      return 'ZtQlNzTDa1S9AsuNppbtNfpbVdI3';
+    }
+
+    // ── Helpers de autenticação ──────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isMaster() {
+      return isAuthenticated() && request.auth.uid == masterUid();
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        isMaster() ||
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') in ['admin', 'admin_master'] &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('active', false) == true
+        )
+      );
+    }
+
+    // ── Rate limiting simples: verifica se o campo updatedAt
+    //    do documento não foi alterado nos últimos 1000ms ────────────
+    function notTooFast(existingDoc) {
+      return !existingDoc.data.keys().hasAny(['updatedAt']) ||
+             existingDoc.data.updatedAt == null ||
+             request.time > existingDoc.data.updatedAt + duration.value(1, 's');
+    }
+
+    // ── POSTS ────────────────────────────────────────────────────────
+    // Qualquer um lê posts publicados; só admins escrevem
+    match /posts/{postId} {
+      allow read: if resource.data.get('status', 'draft') == 'published' || isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() ||
+        // Usuário autenticado pode incrementar apenas likes, fires, views, comments
+        (
+          isAuthenticated() &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['likes', 'fires', 'views', 'comments'])
+        );
+      allow delete: if isAdmin();
+    }
+
+    // ── COMENTÁRIOS ──────────────────────────────────────────────────
+    match /comments/{commentId} {
+      // Qualquer um lê comentários aprovados; admin lê todos
+      allow read: if resource.data.get('status', 'pending') == 'approved' || isAdmin();
+
+      // Autenticado cria — máx. 1000 chars, não pode definir status como aprovado
+      allow create: if isAuthenticated() &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() <= 1000 &&
+        request.resource.data.get('status', 'pending') in ['pending', 'flagged'] &&
+        notTooFast(get(/databases/$(database)/documents/comments/$(commentId)));
+
+      // Admin modera (pode mudar status, deletar)
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── USUÁRIOS ─────────────────────────────────────────────────────
+    match /users/{userId} {
+      // Usuário lê/edita o próprio; admin lê todos; só master deleta
+      allow read: if request.auth.uid == userId || isAdmin();
+
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+
+      // Usuário edita o próprio, mas NÃO pode mudar role, active ou uid
+      allow update: if (
+          request.auth.uid == userId &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['role', 'active', 'uid'])
+        ) || isAdmin();
+
+      allow delete: if isMaster();
+    }
+
+    // ── CONFIG (theme, carousel, background) ─────────────────────────
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── GALERIA ──────────────────────────────────────────────────────
+    match /gallery/{itemId} {
+      allow read: if resource.data.get('active', true) == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ── TIMELINE ─────────────────────────────────────────────────────
+    match /timeline/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── PRODUTOS / LOJA ──────────────────────────────────────────────
+    match /products/{itemId} {
+      allow read: if resource.data.get('active', true) == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ── LOGS (audit trail imutável) ──────────────────────────────────
+    // Só master lê; autenticado cria; NUNCA atualiza/deleta
+    match /logs/{logId} {
+      allow read: if isMaster();
+      allow create: if isAuthenticated();
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

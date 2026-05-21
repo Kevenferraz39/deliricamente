@@ -11,6 +11,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { LogoMark, Btn } from '../../components';
 import { useApp } from '../../context/AppContext';
+import { sanitizeText, validateEmail, validateDisplayName } from '../../security/sanitize.js';
+import { checkRateLimit, clearRateLimit, formatWaitTime, RATE_LIMITS } from '../../security/rateLimit.js';
+import { logAuth, LOG_ACTIONS } from '../../security/auditLogger.js';
 
 // ── Ícones inline ──────────────────────────────────────────────
 const IconMail = () => (
@@ -69,53 +72,112 @@ export default function AdminLogin() {
   // ── Login ──────────────────────────────────────────────────
   const doLogin = async (e) => {
     e.preventDefault(); setErr(''); setLoading(true);
+
+    // Validação de e-mail
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!validateEmail(trimmedEmail)) {
+      setErr('Formato de e-mail inválido.'); setLoading(false); return;
+    }
+
+    // Rate limiting: 5 tentativas por e-mail em 15 minutos
+    const rlKey = `login:${trimmedEmail}`;
+    const rl = checkRateLimit(rlKey, ...RATE_LIMITS.LOGIN);
+    if (!rl.allowed) {
+      const wait = formatWaitTime(rl.waitMs);
+      setErr(`Muitas tentativas. Aguarde ${wait} antes de tentar novamente.`);
+      await logAuth(LOG_ACTIONS.auth_login_failed, trimmedEmail, null, false, `Rate limit atingido — aguardar ${wait}`);
+      setLoading(false); return;
+    }
+
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, pwd);
+      const cred = await signInWithEmailAndPassword(auth, trimmedEmail, pwd);
+      clearRateLimit(rlKey); // Limpa contador após login bem-sucedido
       await login({
         name:  cred.user.displayName || cred.user.email.split('@')[0],
         role:  'user',
         email: cred.user.email,
         uid:   cred.user.uid,
       });
-    } catch (e) { setErr(authError(e.code)); }
+    } catch (firebaseErr) {
+      const msg = authError(firebaseErr.code);
+      setErr(msg);
+      await logAuth(LOG_ACTIONS.auth_login_failed, trimmedEmail, null, false, firebaseErr.code);
+    }
     setLoading(false);
   };
 
   // ── Registro ───────────────────────────────────────────────
   const doRegister = async (e) => {
     e.preventDefault();
-    if (!name.trim())   { setErr('Nome obrigatório.'); return; }
+
+    // Sanitização e validação do nome
+    const sanitizedName = sanitizeText(name.trim(), 50);
+    const nameValidation = validateDisplayName(sanitizedName);
+    if (!nameValidation.valid) { setErr(nameValidation.error); return; }
+
+    // Validação de e-mail
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!validateEmail(trimmedEmail)) { setErr('Formato de e-mail inválido.'); return; }
+
     if (pwd.length < 6) { setErr('Senha deve ter ao menos 6 caracteres.'); return; }
+
+    // Rate limiting: 3 registros por hora
+    const rlKey = `register:${trimmedEmail}`;
+    const rl = checkRateLimit(rlKey, ...RATE_LIMITS.REGISTER);
+    if (!rl.allowed) {
+      const wait = formatWaitTime(rl.waitMs);
+      setErr(`Muitas tentativas de registro. Aguarde ${wait}.`);
+      setLoading(false); return;
+    }
+
     setErr(''); setLoading(true);
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, pwd);
-      await updateProfile(cred.user, { displayName: name.trim() });
+      const cred = await createUserWithEmailAndPassword(auth, trimmedEmail, pwd);
+      await updateProfile(cred.user, { displayName: sanitizedName });
       await setDoc(doc(db, 'users', cred.user.uid), {
         email:       cred.user.email,
-        displayName: name.trim(),
+        displayName: sanitizedName,
         role:        'user',
         active:      false,
         photoUrl:    '',
         createdAt:   serverTimestamp(),
         lastLogin:   serverTimestamp(),
       });
+      await logAuth(LOG_ACTIONS.auth_register, cred.user.email, cred.user.uid, true, null);
       await signOut(auth);
       switchMode('login');
       setEmail(''); setPwd(''); setName('');
       setErr('✓ Conta criada! Aguarde o administrador ativar seu acesso.');
-    } catch (e) { setErr(authError(e.code)); }
+    } catch (firebaseErr) {
+      setErr(authError(firebaseErr.code));
+    }
     setLoading(false);
   };
 
   // ── Recuperar senha ────────────────────────────────────────
   const doReset = async (e) => {
     e.preventDefault();
-    if (!email.trim()) { setErr('Digite seu e-mail para continuar.'); return; }
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) { setErr('Digite seu e-mail para continuar.'); return; }
+    if (!validateEmail(trimmedEmail)) { setErr('Formato de e-mail inválido.'); return; }
+
+    // Rate limiting: 3 resets por 10 minutos
+    const rlKey = `reset:${trimmedEmail}`;
+    const rl = checkRateLimit(rlKey, ...RATE_LIMITS.RESET_PWD);
+    if (!rl.allowed) {
+      const wait = formatWaitTime(rl.waitMs);
+      setErr(`Muitas solicitações. Aguarde ${wait} antes de tentar novamente.`);
+      return;
+    }
+
     setErr(''); setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email.trim());
+      await sendPasswordResetEmail(auth, trimmedEmail);
+      await logAuth(LOG_ACTIONS.auth_reset_password, trimmedEmail, null, true, null);
       setResetOk(true);
-    } catch (e) { setErr(authError(e.code)); }
+    } catch (firebaseErr) {
+      setErr(authError(firebaseErr.code));
+    }
     setLoading(false);
   };
 

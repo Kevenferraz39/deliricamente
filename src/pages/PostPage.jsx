@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Placeholder, Btn, Icon } from '../components';
 import { fmtDate } from './HomePage';
+import { sanitizeComment, validateDisplayName, validateEmail } from '../security/sanitize.js';
+import { checkRateLimit, formatWaitTime, RATE_LIMITS } from '../security/rateLimit.js';
+import { logEvent, LOG_ACTIONS } from '../security/auditLogger.js';
 
 export default function PostPage() {
   const { postId } = useParams();
@@ -18,6 +21,7 @@ export default function PostPage() {
   const [text, setText] = React.useState("");
   const [liked, setLiked] = React.useState(false);
   const [fired, setFired] = React.useState(false);
+  const [commentErr, setCommentErr] = React.useState('');
   const comments = getComments(post.id);
 
   // Atualiza campos quando user mudar (login/logout)
@@ -38,16 +42,56 @@ export default function PostPage() {
     return d.toLocaleDateString('pt-BR', {day:'2-digit',month:'short'});
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e && e.preventDefault();
+    setCommentErr('');
     if (!text.trim()) return;
-    const commentName = name.trim() || (user?.name) || 'Anonimo';
-    const commentEmail = email.trim() || (user?.email) || '';
+
+    // Sanitização do texto do comentário
+    const sanitizedText = sanitizeComment(text);
+    if (!sanitizedText.trim()) {
+      setCommentErr('Comentário inválido ou vazio após sanitização.'); return;
+    }
+
+    // Validação do nome
+    const rawName = name.trim() || (user?.name) || 'Anônimo';
+    const sanitizedName = sanitizeComment(rawName).slice(0, 50);
+    const nameCheck = validateDisplayName(sanitizedName);
+    if (!nameCheck.valid && !user) {
+      setCommentErr(nameCheck.error); return;
+    }
+
+    // Validação de e-mail (se preenchido)
+    const rawEmail = email.trim() || (user?.email) || '';
+    if (rawEmail && !validateEmail(rawEmail)) {
+      setCommentErr('Formato de e-mail inválido.'); return;
+    }
+
+    // Rate limiting: 3 comentários por minuto por chave (uid ou IP simulado via sessionStorage)
+    const rlKey = `comment:${user?.uid || 'anon:' + post.id}`;
+    const rl = checkRateLimit(rlKey, ...RATE_LIMITS.COMMENT);
+    if (!rl.allowed) {
+      const wait = formatWaitTime(rl.waitMs);
+      setCommentErr(`Aguarde ${wait} antes de publicar outro comentário.`);
+      return;
+    }
+
+    const commentName  = sanitizedName || 'Anônimo';
+    const commentEmail = rawEmail;
+
     addComment(post.id, {
-      name: commentName, email: commentEmail, text: text.trim(),
+      name: commentName, email: commentEmail, text: sanitizedText,
       date: new Date().toISOString(),
     });
-    setText("");
+
+    // Audit log
+    await logEvent(LOG_ACTIONS.comment_create, {
+      postId:   post.id,
+      postTitle: post.title,
+      textLen:  sanitizedText.length,
+    }, user ? { uid: user.uid, email: user.email, name: user.name, role: user.role } : null);
+
+    setText('');
   };
 
   return (
@@ -176,6 +220,11 @@ export default function PostPage() {
                       value={text} onChange={e=>setText(e.target.value)}
                       onKeyDown={e=>{ if (e.key==='Enter' && e.ctrlKey) submit(); }}
                     />
+                    {commentErr && (
+                      <div className="mono" style={{marginTop:6,fontSize:'0.75rem',color:'var(--red)',padding:'6px 10px',background:'rgba(225,6,0,0.07)',border:'1px solid rgba(225,6,0,0.2)'}}>
+                        {commentErr}
+                      </div>
+                    )}
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8}}>
                       <span className="mono" style={{fontSize:'0.7rem',color:'var(--muted)'}}>Ctrl+Enter para publicar</span>
                       <Btn variant="red" arrow onClick={submit} disabled={!text.trim()}>Publicar</Btn>

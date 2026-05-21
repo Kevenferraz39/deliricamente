@@ -5,6 +5,8 @@ import { db, auth } from './firebase.js';
 import { doc, collection, addDoc, setDoc, updateDoc, deleteDoc, getDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import './styles/global.css';
+import { useSessionTimeout } from './hooks/useSessionTimeout.js';
+import { logAuth, LOG_ACTIONS } from './security/auditLogger.js';
 
 import { AppContext } from './context/AppContext';
 import { SEED_POSTS } from './data';
@@ -300,13 +302,52 @@ function App() {
       const snap = await getDoc(doc(db, 'users', userData.uid));
       const firestoreRole = snap.exists() ? snap.data().role : 'user';
       const isActive = snap.exists() ? snap.data().active !== false : true;
-      if (!isActive) { await signOut(auth); alert('Sua conta esta inativa.'); return; }
+      if (!isActive) {
+        await signOut(auth);
+        alert('Sua conta esta inativa.');
+        await logAuth(LOG_ACTIONS.auth_login_failed, userData.email, userData.uid, false, 'Conta inativa');
+        return;
+      }
       const fullUser = { ...userData, role: firestoreRole };
       setUser(fullUser);
-    } catch (e) { setUser(userData); }
+      await logAuth(LOG_ACTIONS.auth_login, userData.email, userData.uid, true, null);
+    } catch (e) {
+      setUser(userData);
+      await logAuth(LOG_ACTIONS.auth_login, userData.email, userData.uid, true, null);
+    }
   };
 
-  const logout = () => { signOut(auth); setUser(null); };
+  const logout = async (reason = 'manual') => {
+    if (user) {
+      await logAuth(LOG_ACTIONS.auth_logout, user.email, user.uid, true, reason === 'timeout' ? 'Sessão expirada por inatividade' : null);
+    }
+    signOut(auth);
+    setUser(null);
+  };
+
+  // ── Session ID único por aba (para audit logs) ───────────────────
+  const sessionIdRef = React.useRef((() => {
+    try {
+      const key = 'app_session_id';
+      let id = sessionStorage.getItem(key);
+      if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem(key, id); }
+      return id;
+    } catch { return Math.random().toString(36).slice(2); }
+  })());
+
+  // ── Aviso de sessão prestes a expirar ────────────────────────────
+  const [sessionWarning, setSessionWarning] = React.useState(false);
+
+  // ── Session timeout: 30 minutos de inatividade ───────────────────
+  useSessionTimeout({
+    isAuthenticated: !!user,
+    timeoutMs: 30 * 60 * 1000,
+    onTimeout: () => {
+      setSessionWarning(false);
+      logout('timeout');
+    },
+    onWarning: () => setSessionWarning(true),
+  });
 
   const contextValue = {
     posts, setPosts,
@@ -319,11 +360,30 @@ function App() {
     mobileNav, setMobileNav,
     login, logout,
     getComments, addComment, toggleLike,
+    sessionId: sessionIdRef.current,
   };
 
   return (
     <AppContext.Provider value={contextValue}>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        {/* Aviso de sessão prestes a expirar por inatividade */}
+        {sessionWarning && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+            background: 'rgba(245,158,11,0.95)', color: '#000',
+            padding: '10px 24px', display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', fontFamily: 'var(--font-mono)',
+            fontSize: '0.85rem', fontWeight: 700, gap: 16,
+          }}>
+            <span>Sua sessão expira em 5 minutos por inatividade.</span>
+            <button
+              onClick={() => setSessionWarning(false)}
+              style={{ background: 'rgba(0,0,0,0.15)', border: 'none', cursor: 'pointer', padding: '4px 12px', fontFamily: 'inherit', fontWeight: 700 }}
+            >
+              OK, continuar
+            </button>
+          </div>
+        )}
         <Nav />
         <Routes>
           <Route path="/" element={<HomePage />} />
