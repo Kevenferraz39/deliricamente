@@ -286,10 +286,10 @@ const PIXA_CHARS = {
 const PIXA_WORDS = [
   'DELIRICAMENTE','EPIFANIA','CAIEIRAS','AGC',
   'HIP HOP','COLETIVO','CULTURA','GUERRILHA',
-  'CONHECIMENTO','ARTE','RIMA','BATALHA',
-  'FLOW','UNDERGROUND','PERIFERIA','FORCA',
+  'CONHECIMENTO','ARTE','REFLEXO','BATALHA',
+  'SÓ QUERO SONHAR','UNDERGROUND','PERIFERIA','FORCA',
   'RESISTENCIA','IDENTIDADE','REBELDIA','UNIAO',
-  'MUSICA','LIBERDADE','QUEBRDA','SOMA',
+  'MUSICA','LIBERDADE','QUEBRADA','SOMA','A VIDA PEDE CALMA', 'PRIMEIRO ATO', '3e33', 'OUTONO'
 ];
 
 // AnimatedBackground — Canvas 2D: blobs | rede | geo | off
@@ -314,24 +314,27 @@ function AnimatedBackground({ style = 'blobs', speed = 1, density = 15, opacity 
 
     // Cria tag de pichacao com palavra real do coletivo
     const makePixaTag = () => {
-      // Escolhe palavra e converte para glifos disponíveis
-      let word = PIXA_WORDS[Math.floor(Math.random() * PIXA_WORDS.length)].replace(/ /g,'');
-      let chars = word.split('').map(ch => PIXA_CHARS[ch]).filter(Boolean);
-      if (chars.length === 0) return null;
+      const word = PIXA_WORDS[Math.floor(Math.random() * PIXA_WORDS.length)];
+      // Espaço → null (avanço visual sem glifo); letra sem glifo → removida
+      let chars = word.split('').map(ch => ch === ' ' ? null : (PIXA_CHARS[ch] || undefined))
+                                .filter(ch => ch !== undefined);
+      if (chars.filter(Boolean).length === 0) return null;
 
       const scale = 1.8 + Math.random() * 2;
       const charW = 10 * scale;
+      const spaceW = charW * 0.6; // largura do espaço entre palavras
       const tagH = 28 * scale;
-      let tagW = chars.length * charW;
+      // tagW considera espaços menores que letras
+      let tagW = chars.reduce((acc, g) => acc + (g === null ? spaceW : charW), 0);
 
-      // Se a palavra nao cabe, encurta
+      // Se a frase nao cabe, remove chars do final (preservando espaços)
       while (tagW > canvas.width - 30 && chars.length > 2) {
         chars = chars.slice(0, chars.length - 1);
-        tagW = chars.length * charW;
+        tagW = chars.reduce((acc, g) => acc + (g === null ? spaceW : charW), 0);
       }
       if (tagW > canvas.width - 30 || tagH > canvas.height - 30) return null;
 
-      const totalStrokes = chars.reduce((acc, g) => acc + g.length, 0);
+      const totalStrokes = chars.reduce((acc, g) => acc + (g ? g.length : 0), 0);
       return {
         x: 20 + Math.random() * (canvas.width - tagW - 20),
         y: 20 + Math.random() * (canvas.height - tagH - 20),
@@ -527,6 +530,11 @@ function AnimatedBackground({ style = 'blobs', speed = 1, density = 15, opacity 
           let ox = t.x;
 
           t.chars.forEach(glyph => {
+            // null = espaço entre palavras: avança sem desenhar
+            if (glyph === null) {
+              ox += t.charW * 0.6;
+              return;
+            }
             glyph.forEach(stroke => {
               if (strokeIdx >= strokesToDraw) { strokeIdx++; return; }
               ctx.strokeStyle = c + hex2(alpha * 255);
