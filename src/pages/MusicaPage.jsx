@@ -1,6 +1,11 @@
 import React from 'react';
 import { getArtist, getArtistAlbums, getArtistTopTracks, embedUrl, ARTIST_IDS, PLAYLIST_ID } from '../spotify.js';
 
+// Limpa o cache do Spotify no localStorage para forçar nova busca
+function clearSpotifyCache() {
+  Object.keys(localStorage).filter(k => k.startsWith('sp_')).forEach(k => localStorage.removeItem(k));
+}
+
 function SpotifyModal({ modal, onClose }) {
   if (!modal) return null;
 
@@ -144,8 +149,15 @@ export default function MusicaPage() {
       {loading && (
         <section className="section tight" style={{paddingTop:0}}>
           <div className="wrap">
-            <div className="mono" style={{color:'var(--muted)',textAlign:'center',padding:'4rem 0'}}>
-              // CARREGANDO DADOS DO SPOTIFY...
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:16,padding:'4rem 0'}}>
+              <div style={{
+                width:40,height:40,borderRadius:'50%',
+                border:'3px solid var(--gray)',borderTopColor:'#1DB954',
+                animation:'spin 0.9s linear infinite',
+              }} />
+              <div className="mono" style={{color:'var(--muted)',fontSize:'0.8rem'}}>
+                // CARREGANDO DADOS DO SPOTIFY...
+              </div>
             </div>
           </div>
         </section>
@@ -161,7 +173,7 @@ export default function MusicaPage() {
               <div className="mono" style={{color:'var(--red)',fontSize:'0.75rem'}}>// ERRO · SPOTIFY API</div>
               <p style={{margin:0,color:'var(--text-body)',fontSize:'0.9rem'}}>{error}</p>
               <button
-                onClick={() => { setError(null); setLoading(true); window.location.reload(); }}
+                onClick={() => { clearSpotifyCache(); setError(null); setLoading(true); window.location.reload(); }}
                 style={{
                   alignSelf:'flex-start', background:'transparent',
                   border:'1px solid var(--gray)', color:'var(--muted)',

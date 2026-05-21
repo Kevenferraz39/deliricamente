@@ -8,10 +8,35 @@ export const ARTIST_IDS = [
 
 export const PLAYLIST_ID = '3IdRl1tVoQ7h7PFX4zRRMH';
 
-let _cache = { token: null, expires: 0 };
+// ── Token cache (memória, expira com o token) ──────────────────
+let _tokenCache = { token: null, expires: 0 };
+
+// ── Data cache (localStorage, TTL 1 hora) ─────────────────────
+// Evita repetir chamadas à API a cada visita ou remount do componente.
+const DATA_TTL = 60 * 60 * 1000;
+
+function lsGet(key) {
+  try {
+    const raw = localStorage.getItem('sp_' + key);
+    if (!raw) return null;
+    const item = JSON.parse(raw);
+    if (Date.now() < item.expires) return item.data;
+    localStorage.removeItem('sp_' + key);
+  } catch {}
+  return null;
+}
+
+function lsSet(key, data) {
+  try {
+    localStorage.setItem('sp_' + key, JSON.stringify({
+      data,
+      expires: Date.now() + DATA_TTL,
+    }));
+  } catch {}
+}
 
 export async function getToken() {
-  if (_cache.token && Date.now() < _cache.expires) return _cache.token;
+  if (_tokenCache.token && Date.now() < _tokenCache.expires) return _tokenCache.token;
 
   if (CLIENT_ID && CLIENT_SECRET) {
     try {
@@ -26,33 +51,31 @@ export async function getToken() {
       });
       const data = await res.json();
       if (data.access_token) {
-        _cache = { token: data.access_token, expires: Date.now() + (data.expires_in - 60) * 1000 };
-        return _cache.token;
+        _tokenCache = { token: data.access_token, expires: Date.now() + (data.expires_in - 60) * 1000 };
+        return _tokenCache.token;
       }
-    } catch (e) {
-      // silencioso
-    }
+    } catch {}
   }
 
   return import.meta.env.VITE_SPOTIFY_TOKEN || '';
 }
 
-export async function spotifyFetch(endpoint, retries = 2) {
+export async function spotifyFetch(endpoint) {
+  // Retorna do cache local se disponível (evita chamadas repetidas)
+  const cached = lsGet(endpoint);
+  if (cached) return cached;
+
   const token = await getToken();
   if (!token) return null;
   try {
     const res = await fetch(`https://api.spotify.com/${endpoint}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    // 429: rate limit — aguarda e tenta novamente
-    if (res.status === 429 && retries > 0) {
-      const wait = parseInt(res.headers.get('Retry-After') || '3', 10) * 1000;
-      await new Promise(r => setTimeout(r, Math.min(wait, 5000)));
-      return spotifyFetch(endpoint, retries - 1);
-    }
     if (!res.ok) return null;
-    return res.json();
-  } catch (e) {
+    const data = await res.json();
+    lsSet(endpoint, data);
+    return data;
+  } catch {
     return null;
   }
 }
@@ -61,16 +84,15 @@ export async function getArtist(id) {
   return spotifyFetch(`v1/artists/${id}`);
 }
 
-export async function getArtistAlbums(id, limit = 6) {
-  // sem filtro de market para não esconder releases com distribuição limitada
+export async function getArtistAlbums(id, limit = 8) {
+  // Sem market=BR para não ocultar releases com distribuição limitada
   const data = await spotifyFetch(
     `v1/artists/${id}/albums?include_groups=album,single&limit=${limit}`
   );
   return data?.items || [];
 }
 
-// top-tracks pode retornar 403 com Client Credentials em alguns casos
-// retorna array vazio silenciosamente — secao fica oculta
+// top-tracks retorna 403 com Client Credentials — seção fica oculta silenciosamente
 export async function getArtistTopTracks(id) {
   const data = await spotifyFetch(`v1/artists/${id}/top-tracks?market=BR`);
   return data?.tracks?.slice(0, 5) || [];
