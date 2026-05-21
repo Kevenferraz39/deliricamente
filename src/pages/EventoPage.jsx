@@ -20,6 +20,12 @@ function ytId(url) {
   return m ? m[1] : null;
 }
 
+function isDirectVideo(url) {
+  if (!url) return false;
+  // Firebase Storage ou qualquer URL de arquivo de vídeo direto
+  return /\.(mp4|webm|mov|avi|mkv)(\?|$)/i.test(url) || url.includes('firebasestorage.googleapis.com');
+}
+
 export default function EventoPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -73,7 +79,8 @@ export default function EventoPage() {
 
   const cor = TIPO_COLORS[evento.tipo] || 'var(--red)';
   const videoYtId = ytId(evento.videoUrl);
-  const hasMedia = evento.imageUrl || videoYtId;
+  const videoIsDirect = !videoYtId && isDirectVideo(evento.videoUrl);
+  const hasMedia = evento.imageUrl || videoYtId || videoIsDirect;
 
   return (
     <div className="page-enter">
@@ -136,6 +143,7 @@ export default function EventoPage() {
         <div className="wrap" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 40, maxWidth: 860 }}>
 
           {/* Imagem principal (se não usou como hero) ou Vídeo */}
+          {/* Vídeo YouTube */}
           {videoYtId && (
             <div style={{ borderRadius: 4, overflow: 'hidden', border: '1px solid var(--line)' }}>
               <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
@@ -150,7 +158,22 @@ export default function EventoPage() {
             </div>
           )}
 
-          {evento.imageUrl && !videoYtId && (
+          {/* Vídeo direto (Firebase Storage / MP4) */}
+          {videoIsDirect && (
+            <div style={{ border: '1px solid var(--line)', overflow: 'hidden', background: '#000' }}>
+              <video
+                src={evento.videoUrl}
+                controls
+                playsInline
+                style={{ width: '100%', maxHeight: 480, display: 'block' }}
+              >
+                Seu navegador não suporta vídeo HTML5.
+              </video>
+            </div>
+          )}
+
+          {/* Imagem (quando não há vídeo) */}
+          {evento.imageUrl && !videoYtId && !videoIsDirect && (
             <img src={evento.imageUrl} alt={evento.title} style={{ width: '100%', maxHeight: 480, objectFit: 'cover', border: '1px solid var(--line)' }} />
           )}
 

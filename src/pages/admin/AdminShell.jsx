@@ -1,6 +1,7 @@
 import React from 'react';
-import { db } from '../../firebase.js';
+import { db, storage } from '../../firebase.js';
 import { doc, collection, onSnapshot, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useNavigate } from 'react-router-dom';
 import { LogoMark, Btn, Icon, Placeholder } from '../../components';
 import { TIMELINE } from '../../data';
@@ -1241,6 +1242,134 @@ function AdminCarousel({ user }) {
   );
 }
 
+// ---------- UPLOAD PARA FIREBASE STORAGE ----------
+function uploadToStorage(file, folder, onProgress) {
+  return new Promise((resolve, reject) => {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${folder}/${Date.now()}_${safeName}`;
+    const sRef = storageRef(storage, path);
+    const task = uploadBytesResumable(sRef, file);
+    task.on('state_changed',
+      snap => onProgress?.(snap.bytesTransferred / snap.totalBytes * 100),
+      reject,
+      () => getDownloadURL(task.snapshot.ref).then(resolve).catch(reject)
+    );
+  });
+}
+
+// Campo de upload de mídia: suporta arrastar, clicar, câmera mobile e cola de URL
+function MediaUploadField({ label, value, onChange, type = 'image', folder = 'agenda' }) {
+  const [uploading, setUploading] = React.useState(false);
+  const [progress, setProgress] = React.useState(0);
+  const [err, setErr] = React.useState('');
+  const inputRef = React.useRef();
+  const isVideo = type === 'video';
+
+  const accept = isVideo
+    ? 'video/mp4,video/webm,video/quicktime,video/x-msvideo'
+    : 'image/jpeg,image/png,image/webp,image/gif';
+
+  const maxMB = isVideo ? 200 : 10;
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    // Valida tipo
+    const isImgFile = file.type.startsWith('image/');
+    const isVidFile = file.type.startsWith('video/');
+    if (isVideo && !isVidFile) { setErr('Selecione um arquivo de vídeo (MP4, MOV, WebM).'); return; }
+    if (!isVideo && !isImgFile) { setErr('Selecione uma imagem (JPG, PNG, WebP).'); return; }
+    // Valida tamanho
+    if (file.size > maxMB * 1024 * 1024) { setErr(`Arquivo muito grande. Máximo: ${maxMB}MB.`); return; }
+
+    setUploading(true); setErr(''); setProgress(0);
+    try {
+      const url = await uploadToStorage(file, folder, p => setProgress(Math.round(p)));
+      onChange(url);
+    } catch (e) {
+      setErr('Falha no upload: ' + (e.message || 'tente novamente'));
+    }
+    setUploading(false);
+  };
+
+  const onDrop = (e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+      <label className="mono" style={{ fontSize:'0.7rem', color:'var(--muted)' }}>
+        // {label.toUpperCase()}
+      </label>
+
+      {/* Zona de upload */}
+      <div
+        className="upload-zone"
+        style={{ cursor: uploading ? 'default' : 'pointer', position:'relative' }}
+        onClick={() => !uploading && inputRef.current?.click()}
+        onDragOver={e => e.preventDefault()}
+        onDrop={onDrop}
+      >
+        {uploading ? (
+          <div style={{ width:'100%', textAlign:'center' }}>
+            <div className="mono" style={{ fontSize:'0.75rem', marginBottom:8 }}>
+              Enviando... {progress}%
+            </div>
+            <div style={{ width:'100%', height:6, background:'var(--gray)', borderRadius:3 }}>
+              <div style={{ width:`${progress}%`, height:'100%', background:'var(--red)', borderRadius:3, transition:'width 0.3s' }} />
+            </div>
+          </div>
+        ) : (
+          <>
+            <Icon.Upload />
+            <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.8rem' }}>
+              Clique, arraste ou {isVideo ? 'grave' : 'tire'} pelo celular
+            </span>
+            <small style={{ color:'var(--muted)', fontSize:'0.7rem' }}>
+              {isVideo ? 'MP4, MOV, WebM · máx 200MB' : 'JPG, PNG, WebP · máx 10MB'}
+            </small>
+          </>
+        )}
+      </div>
+
+      {/* Input nativo — capture="environment" abre câmera no mobile */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        capture={isVideo ? 'environment' : undefined}
+        style={{ display:'none' }}
+        onChange={e => handleFile(e.target.files?.[0])}
+      />
+
+      {/* Preview */}
+      {value && !uploading && (
+        <div style={{ position:'relative', border:'1px solid var(--line)', overflow:'hidden' }}>
+          {isVideo
+            ? <video src={value} controls style={{ width:'100%', maxHeight:200, display:'block', background:'#000' }} />
+            : <img src={value} alt="" style={{ width:'100%', maxHeight:200, objectFit:'cover', display:'block' }} onError={e=>e.target.style.display='none'} />
+          }
+          <button
+            onClick={() => onChange('')}
+            style={{ position:'absolute', top:6, right:6, background:'rgba(0,0,0,0.7)', border:'none', color:'#fff', width:24, height:24, borderRadius:'50%', cursor:'pointer', fontSize:13, lineHeight:'24px', textAlign:'center' }}
+          >✕</button>
+        </div>
+      )}
+
+      {/* Fallback: colar URL */}
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <span className="mono" style={{ fontSize:'0.65rem', color:'var(--muted)', whiteSpace:'nowrap' }}>ou URL:</span>
+        <input
+          className="input"
+          style={{ padding:'6px 10px', fontSize:'0.78rem' }}
+          placeholder={`https://...${isVideo ? '.mp4 / youtube.com/...' : '.jpg'}`}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+        />
+      </div>
+
+      {err && <div className="mono" style={{ fontSize:'0.72rem', color:'var(--red)' }}>{err}</div>}
+    </div>
+  );
+}
+
 // ---------- ADMIN AGENDA ----------
 const TIPOS_EVENTO = ['Festival', 'Show', 'Batalha', 'Oficina', 'Cultura', 'Outro'];
 const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -1349,8 +1478,20 @@ function AdminAgenda() {
 
             <textarea className="input textarea" placeholder="DESCRIÇÃO DO EVENTO (pode usar parágrafos separados por linha em branco)" value={f.description||''} onChange={e=>set('description',e.target.value)} style={{ minHeight:160 }} />
 
-            <input className="input" placeholder="URL DA IMAGEM (https://...)" value={f.imageUrl||''} onChange={e=>set('imageUrl',e.target.value)} />
-            <input className="input" placeholder="URL DO VÍDEO YouTube (opcional)" value={f.videoUrl||''} onChange={e=>set('videoUrl',e.target.value)} />
+            <MediaUploadField
+              label="Imagem do evento"
+              value={f.imageUrl||''}
+              onChange={v => set('imageUrl', v)}
+              type="image"
+              folder="agenda"
+            />
+            <MediaUploadField
+              label="Vídeo do evento (YouTube, MP4 ou gravação)"
+              value={f.videoUrl||''}
+              onChange={v => set('videoUrl', v)}
+              type="video"
+              folder="agenda"
+            />
 
             <div style={{ display:'flex', gap:24, alignItems:'center' }}>
               <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'var(--font-mono)', fontSize:'0.8rem' }}>
@@ -1375,14 +1516,7 @@ function AdminAgenda() {
             </div>
           </div>
 
-          {/* Preview da imagem */}
           <div className="editor-side">
-            {f.imageUrl && (
-              <div className="box">
-                <h4>// PRÉVIA DA IMAGEM</h4>
-                <img src={f.imageUrl} alt="" style={{ width:'100%', maxHeight:200, objectFit:'cover', display:'block' }} onError={e=>e.target.style.display='none'} />
-              </div>
-            )}
             <div className="box">
               <h4>// TIPOS DISPONÍVEIS</h4>
               {TIPOS_EVENTO.map(t => (
@@ -1390,6 +1524,15 @@ function AdminAgenda() {
                   {f.tipo===t ? '▶ ' : '· '}{t}
                 </div>
               ))}
+            </div>
+            <div className="box">
+              <h4>// DICAS DE UPLOAD</h4>
+              <div className="mono" style={{ fontSize:'0.7rem', color:'var(--muted)', lineHeight:1.6 }}>
+                <div>· Imagem: JPG, PNG, WebP até 10MB</div>
+                <div>· Vídeo: MP4, MOV, WebM até 200MB</div>
+                <div>· No celular: abre câmera direto</div>
+                <div>· YouTube: cole a URL no campo "ou URL"</div>
+              </div>
             </div>
           </div>
         </div>

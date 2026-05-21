@@ -1,0 +1,44 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Agenda — imagens e vídeos de eventos
+    match /agenda/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 200 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+         || request.resource.contentType.matches('video/.*'));
+    }
+
+    // Posts — imagens de capa
+    match /posts/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Galeria — fotos e vídeos curtos
+    match /gallery/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 50 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+         || request.resource.contentType.matches('video/.*'));
+    }
+
+    // Timeline — imagens históricas
+    match /timeline/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Bloqueia tudo o mais
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
