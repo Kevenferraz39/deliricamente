@@ -23,6 +23,7 @@ import ContatoPage from './pages/ContatoPage';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminShell from './pages/admin/AdminShell';
 import NotFoundPage from './pages/NotFoundPage';
+import EventoPage from './pages/EventoPage';
 import UserProfilePage from './pages/UserProfilePage';
 import ErrorPage from './pages/ErrorPage';
 import Footer from './components/Footer';
@@ -398,6 +399,7 @@ function App() {
           <Route path="/admin/*" element={
             <ProtectedRoute><AdminShell /></ProtectedRoute>
           } />
+          <Route path="/agenda/:id" element={<EventoPage />} />
           <Route path="/perfil" element={<UserProfilePage />} />
           <Route path="/error/:code" element={<ErrorPage />} />
           <Route path="*" element={<NotFoundPage />} />

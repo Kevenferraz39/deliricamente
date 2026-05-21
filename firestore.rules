@@ -110,6 +110,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── AGENDA / EVENTOS ─────────────────────────────────────────────
+    match /agenda/{eventoId} {
+      allow read: if resource.data.get('active', true) == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
     // ── LOGS (audit trail imutável) ──────────────────────────────────
     // Só master lê.
     // Qualquer origem pode criar (incluindo não autenticados) para capturar

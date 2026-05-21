@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { LogoMark, Placeholder, Marquee, Btn, AnimatedBackground, HeroCarousel } from '../components';
 import { AGENDA, COLLECTIVES } from '../data';
+import { db } from '../firebase.js';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 // formats "2024-11-23" -> ["23","NOV","2024"]
 export function fmtDate(iso) {
@@ -220,7 +222,26 @@ function AGCSection() {
 // ============================================================
 // AGENDA
 // ============================================================
+const TIPO_COR = {
+  Festival: 'var(--red)', Show: '#7c3aed', Batalha: '#0ea5e9',
+  Oficina: '#16a34a', Cultura: '#d97706',
+};
+
 function Agenda() {
+  const navigate = useNavigate();
+  const [eventos, setEventos] = React.useState(AGENDA);
+
+  React.useEffect(() => {
+    try {
+      const q = query(collection(db, 'agenda'), orderBy('date', 'asc'));
+      const unsub = onSnapshot(q, snap => {
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(e => e.active !== false);
+        if (items.length > 0) setEventos(items);
+      });
+      return () => unsub();
+    } catch {}
+  }, []);
+
   return (
     <section className="section">
       <div className="wrap">
@@ -231,14 +252,23 @@ function Agenda() {
           </div>
         </div>
         <div className="agenda-list">
-          {AGENDA.map((e, i) => (
-            <div className="agenda-row" key={i}>
+          {eventos.map((e, i) => (
+            <div
+              key={e.id || i}
+              className="agenda-row agenda-row-link"
+              onClick={() => navigate(`/agenda/${e.id}`)}
+              style={{ cursor: 'pointer' }}
+            >
               <div className="agenda-date">
                 {e.dia}<small>{e.mes} · {e.ano}</small>
               </div>
               <div className="agenda-title">{e.title}</div>
               <div className="agenda-meta">{e.local}</div>
-              <div className="agenda-meta" style={{color:"var(--red)"}}>{e.tipo} →</div>
+              <div className="agenda-meta" style={{ color: TIPO_COR[e.tipo] || 'var(--red)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {e.tipo}
+                {e.time && <span className="mono" style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>· {e.time}</span>}
+                <span>→</span>
+              </div>
             </div>
           ))}
         </div>

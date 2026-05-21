@@ -1241,6 +1241,212 @@ function AdminCarousel({ user }) {
   );
 }
 
+// ---------- ADMIN AGENDA ----------
+const TIPOS_EVENTO = ['Festival', 'Show', 'Batalha', 'Oficina', 'Cultura', 'Outro'];
+const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+
+function AdminAgenda() {
+  const [eventos, setEventos] = React.useState([]);
+  const [editing, setEditing] = React.useState(null); // null = lista, {} = novo, {id,...} = editar
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState('');
+
+  const empty = { title:'', date:'', time:'', timeEnd:'', local:'', endereco:'', tipo:'Show', description:'', imageUrl:'', videoUrl:'', active:true, featured:false };
+
+  React.useEffect(() => {
+    const q = query(collection(db, 'agenda'), orderBy('date', 'asc'));
+    const unsub = onSnapshot(q, snap => setEventos(snap.docs.map(d => ({ id:d.id, ...d.data() }))));
+    return () => unsub();
+  }, []);
+
+  const dateToFields = (date) => {
+    if (!date) return { dia:'', mes:'', ano:'' };
+    const d = new Date(date + 'T12:00:00');
+    return { dia: String(d.getDate()).padStart(2,'0'), mes: MESES[d.getMonth()], ano: String(d.getFullYear()) };
+  };
+
+  const save = async () => {
+    if (!editing.title?.trim()) { setMsg('Título obrigatório.'); return; }
+    if (!editing.date) { setMsg('Data obrigatória.'); return; }
+    setSaving(true); setMsg('');
+    try {
+      const fields = dateToFields(editing.date);
+      const data = {
+        title: sanitizeText(editing.title, 120),
+        date: editing.date,
+        dia: fields.dia, mes: fields.mes, ano: fields.ano,
+        time: editing.time || '',
+        timeEnd: editing.timeEnd || '',
+        local: sanitizeText(editing.local, 100),
+        endereco: sanitizeText(editing.endereco, 200),
+        tipo: editing.tipo || 'Outro',
+        description: sanitizeText(editing.description, 3000),
+        imageUrl: editing.imageUrl || '',
+        videoUrl: editing.videoUrl || '',
+        active: editing.active !== false,
+        featured: !!editing.featured,
+        updatedAt: serverTimestamp(),
+      };
+      if (editing.id) {
+        await updateDoc(doc(db, 'agenda', editing.id), data);
+      } else {
+        await addDoc(collection(db, 'agenda'), { ...data, createdAt: serverTimestamp() });
+      }
+      setMsg('✓ Salvo com sucesso!');
+      setTimeout(() => { setEditing(null); setMsg(''); }, 800);
+    } catch (e) { setMsg('Erro ao salvar: ' + e.message); }
+    setSaving(false);
+  };
+
+  const remove = async (id) => {
+    if (!confirm('Excluir este evento?')) return;
+    await deleteDoc(doc(db, 'agenda', id));
+  };
+
+  const toggleActive = async (ev) => {
+    await updateDoc(doc(db, 'agenda', ev.id), { active: !ev.active });
+  };
+
+  // ── FORMULÁRIO ──
+  if (editing !== null) {
+    const f = editing;
+    const set = (k, v) => setEditing(prev => ({ ...prev, [k]: v }));
+    return (
+      <div>
+        <div className="admin-head">
+          <div>
+            <div className="kicker">// {f.id ? 'EDITAR' : 'NOVO'} EVENTO</div>
+            <h1>{f.id ? f.title || 'Editar' : 'Novo Evento'}</h1>
+          </div>
+          <Btn variant="ghost" onClick={() => { setEditing(null); setMsg(''); }}>← Voltar</Btn>
+        </div>
+
+        <div className="editor-shell">
+          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            <input className="input" placeholder="TÍTULO DO EVENTO *" value={f.title||''} onChange={e=>set('title',e.target.value)} />
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
+              <div>
+                <label className="mono" style={{ fontSize:'0.7rem', color:'var(--muted)', display:'block', marginBottom:4 }}>DATA *</label>
+                <input className="input" type="date" value={f.date||''} onChange={e=>set('date',e.target.value)} />
+              </div>
+              <div>
+                <label className="mono" style={{ fontSize:'0.7rem', color:'var(--muted)', display:'block', marginBottom:4 }}>HORA INÍCIO</label>
+                <input className="input" type="time" value={f.time||''} onChange={e=>set('time',e.target.value)} />
+              </div>
+              <div>
+                <label className="mono" style={{ fontSize:'0.7rem', color:'var(--muted)', display:'block', marginBottom:4 }}>HORA FIM</label>
+                <input className="input" type="time" value={f.timeEnd||''} onChange={e=>set('timeEnd',e.target.value)} />
+              </div>
+            </div>
+
+            <select className="input" value={f.tipo||'Outro'} onChange={e=>set('tipo',e.target.value)}>
+              {TIPOS_EVENTO.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+
+            <input className="input" placeholder="LOCAL (ex: Praça Pró Polo · Caieiras)" value={f.local||''} onChange={e=>set('local',e.target.value)} />
+            <input className="input" placeholder="ENDEREÇO COMPLETO" value={f.endereco||''} onChange={e=>set('endereco',e.target.value)} />
+
+            <textarea className="input textarea" placeholder="DESCRIÇÃO DO EVENTO (pode usar parágrafos separados por linha em branco)" value={f.description||''} onChange={e=>set('description',e.target.value)} style={{ minHeight:160 }} />
+
+            <input className="input" placeholder="URL DA IMAGEM (https://...)" value={f.imageUrl||''} onChange={e=>set('imageUrl',e.target.value)} />
+            <input className="input" placeholder="URL DO VÍDEO YouTube (opcional)" value={f.videoUrl||''} onChange={e=>set('videoUrl',e.target.value)} />
+
+            <div style={{ display:'flex', gap:24, alignItems:'center' }}>
+              <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'var(--font-mono)', fontSize:'0.8rem' }}>
+                <input type="checkbox" checked={!!f.active} onChange={e=>set('active',e.target.checked)} style={{ accentColor:'var(--red)' }} />
+                Ativo (aparece na agenda)
+              </label>
+              <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'var(--font-mono)', fontSize:'0.8rem' }}>
+                <input type="checkbox" checked={!!f.featured} onChange={e=>set('featured',e.target.checked)} style={{ accentColor:'var(--red)' }} />
+                Destaque
+              </label>
+            </div>
+
+            {msg && (
+              <div className="mono" style={{ fontSize:'0.8rem', color: msg.startsWith('✓') ? '#22c55e' : 'var(--red)', padding:'8px 12px', background: msg.startsWith('✓') ? 'rgba(34,197,94,0.08)' : 'rgba(225,6,0,0.08)', border:`1px solid ${msg.startsWith('✓') ? 'rgba(34,197,94,0.2)' : 'rgba(225,6,0,0.2)'}` }}>
+                {msg}
+              </div>
+            )}
+
+            <div style={{ display:'flex', gap:12 }}>
+              <Btn variant="red" arrow onClick={save} disabled={saving}>{saving ? 'SALVANDO...' : 'SALVAR EVENTO'}</Btn>
+              <Btn variant="ghost" onClick={() => { setEditing(null); setMsg(''); }}>Cancelar</Btn>
+            </div>
+          </div>
+
+          {/* Preview da imagem */}
+          <div className="editor-side">
+            {f.imageUrl && (
+              <div className="box">
+                <h4>// PRÉVIA DA IMAGEM</h4>
+                <img src={f.imageUrl} alt="" style={{ width:'100%', maxHeight:200, objectFit:'cover', display:'block' }} onError={e=>e.target.style.display='none'} />
+              </div>
+            )}
+            <div className="box">
+              <h4>// TIPOS DISPONÍVEIS</h4>
+              {TIPOS_EVENTO.map(t => (
+                <div key={t} className="mono" style={{ fontSize:'0.75rem', color: f.tipo===t ? 'var(--red)' : 'var(--muted)', cursor:'pointer', padding:'4px 0' }} onClick={()=>set('tipo',t)}>
+                  {f.tipo===t ? '▶ ' : '· '}{t}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── LISTA ──
+  return (
+    <div>
+      <div className="admin-head">
+        <div>
+          <div className="kicker">// AGENDA · EVENTOS</div>
+          <h1>Agenda</h1>
+        </div>
+        <Btn variant="red" arrow onClick={() => setEditing({ ...empty })}>Novo Evento</Btn>
+      </div>
+
+      {eventos.length === 0 ? (
+        <div className="mono" style={{ color:'var(--muted)', padding:'3rem 0' }}>Nenhum evento cadastrado ainda.</div>
+      ) : (
+        <div className="admin-table">
+          <div className="admin-table-head" style={{ gridTemplateColumns:'2fr 80px 1fr 1fr 100px 80px' }}>
+            <span>EVENTO</span><span>TIPO</span><span>DATA</span><span>LOCAL</span><span>STATUS</span><span>AÇÕES</span>
+          </div>
+          {eventos.map(ev => (
+            <div key={ev.id} className="admin-table-row" style={{ gridTemplateColumns:'2fr 80px 1fr 1fr 100px 80px' }}>
+              <div className="title-cell">
+                {ev.imageUrl
+                  ? <div className="title-thumb" style={{ overflow:'hidden' }}><img src={ev.imageUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /></div>
+                  : <div className="title-thumb" style={{ background:'var(--gray)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>📅</div>
+                }
+                <div>
+                  <div>{ev.title}</div>
+                  {ev.featured && <div className="mono" style={{ color:'#d97706', fontSize:'0.65rem', marginTop:2 }}>★ DESTAQUE</div>}
+                </div>
+              </div>
+              <div className="mono" style={{ fontSize:'0.75rem', color:'var(--muted)' }}>{ev.tipo}</div>
+              <div className="mono" style={{ fontSize:'0.8rem' }}>{ev.dia} {ev.mes} {ev.ano}{ev.time ? ` · ${ev.time}` : ''}</div>
+              <div className="mono" style={{ fontSize:'0.75rem', color:'var(--muted)' }}>{ev.local}</div>
+              <div>
+                <span className={`status-pill ${ev.active ? 'published' : 'draft'}`} style={{ cursor:'pointer' }} onClick={()=>toggleActive(ev)}>
+                  {ev.active ? 'ATIVO' : 'OCULTO'}
+                </span>
+              </div>
+              <div className="row-actions">
+                <button className="icon-btn" title="Editar" onClick={()=>setEditing({ ...ev })}><Icon.Edit /></button>
+                <button className="icon-btn danger" title="Excluir" onClick={()=>remove(ev.id)}><Icon.Trash /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------- ADMIN SHELL ----------
 export default function AdminShell() {
   const navigate = useNavigate();
@@ -1310,6 +1516,7 @@ export default function AdminShell() {
   else if (section === "galeria") content = <AdminGaleria />;
   else if (section === "timeline") content = <AdminTimeline />;
   else if (section === "loja") content = <AdminLoja />;
+  else if (section === "agenda") content = <AdminAgenda />;
   else if (section === "logs") content = <LogsPage />;
 
   const isMasterUser = user?.isMaster || user?.uid === MASTER_ADMIN_UID;
@@ -1319,6 +1526,7 @@ export default function AdminShell() {
     { id:"posts", label:"Posts" },
     { id:"comments", label:"Comentarios" },
     { id:"galeria", label:"Galeria" },
+    { id:"agenda", label:"Agenda / Eventos" },
     { id:"timeline", label:"Timeline / Historia" },
     { id:"loja", label:"Loja / Produtos" },
     { id:"settings", label:"Equipe" },

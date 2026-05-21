@@ -72,7 +72,7 @@ export default function MusicaPage() {
 
         const validArtists = artData.filter(Boolean);
         if (validArtists.length === 0) {
-          setError('Não foi possível conectar ao Spotify. Verifique as credenciais no .env e reinicie o servidor.');
+          setError('Não foi possível conectar ao Spotify. Erro de requisição, contate os responsaveis para que seja resolvido!');
           setLoading(false);
           return;
         }
@@ -170,7 +170,7 @@ export default function MusicaPage() {
               background:'rgba(225,6,0,0.06)', border:'1px solid rgba(225,6,0,0.25)',
               padding:'20px 24px', display:'flex', flexDirection:'column', gap:10,
             }}>
-              <div className="mono" style={{color:'var(--red)',fontSize:'0.75rem'}}>// ERRO · SPOTIFY API</div>
+              <div className="mono" style={{color:'var(--red)',fontSize:'0.75rem'}}>// ERRO · BAD REQUEST</div>
               <p style={{margin:0,color:'var(--text-body)',fontSize:'0.9rem'}}>{error}</p>
               <button
                 onClick={() => { clearSpotifyCache(); setError(null); setLoading(true); window.location.reload(); }}

@@ -271,6 +271,9 @@ article ul { margin: 2rem 0; padding-left: 1.5rem; color: var(--text-body); line
 .agenda-date small { display: block; font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
 .agenda-title { font-family: var(--font-display); font-size: 1.5rem; }
 .agenda-meta { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); }
+.agenda-row-link { transition: background 0.18s, padding-left 0.18s; border-radius: 2px; }
+.agenda-row-link:hover { background: rgba(225,6,0,0.04); padding-left: 8px; }
+.agenda-row-link:hover .agenda-title { color: var(--red); }
 
 .footer { border-top: 1px solid var(--line); padding: 4rem 0 2rem; }
 .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 4rem; margin-bottom: 4rem; }
