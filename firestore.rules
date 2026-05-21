@@ -111,10 +111,20 @@ service cloud.firestore {
     }
 
     // ── LOGS (audit trail imutável) ──────────────────────────────────
-    // Só master lê; autenticado cria; NUNCA atualiza/deleta
+    // Só master lê.
+    // Qualquer origem pode criar (incluindo não autenticados) para capturar
+    // eventos de segurança como tentativas de login falhas e detecção de XSS.
+    // Campos obrigatórios validados + limite de tamanho para prevenir abuso.
+    // NUNCA atualiza/deleta — logs são permanentes.
     match /logs/{logId} {
       allow read: if isMaster();
-      allow create: if isAuthenticated();
+      allow create: if
+        request.resource.data.keys().size() <= 20 &&
+        request.resource.data.action is string &&
+        request.resource.data.action.size() <= 60 &&
+        request.resource.data.message is string &&
+        request.resource.data.message.size() <= 200 &&
+        request.resource.data.severity in ['info', 'warn', 'error', 'critical'];
       allow update: if false;
       allow delete: if false;
     }
