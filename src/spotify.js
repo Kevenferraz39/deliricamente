@@ -37,13 +37,19 @@ export async function getToken() {
   return import.meta.env.VITE_SPOTIFY_TOKEN || '';
 }
 
-export async function spotifyFetch(endpoint) {
+export async function spotifyFetch(endpoint, retries = 2) {
   const token = await getToken();
   if (!token) return null;
   try {
     const res = await fetch(`https://api.spotify.com/${endpoint}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    // 429: rate limit — aguarda e tenta novamente
+    if (res.status === 429 && retries > 0) {
+      const wait = parseInt(res.headers.get('Retry-After') || '3', 10) * 1000;
+      await new Promise(r => setTimeout(r, Math.min(wait, 5000)));
+      return spotifyFetch(endpoint, retries - 1);
+    }
     if (!res.ok) return null;
     return res.json();
   } catch (e) {
@@ -56,8 +62,9 @@ export async function getArtist(id) {
 }
 
 export async function getArtistAlbums(id, limit = 6) {
+  // sem filtro de market para não esconder releases com distribuição limitada
   const data = await spotifyFetch(
-    `v1/artists/${id}/albums?include_groups=album,single&market=BR&limit=${limit}`
+    `v1/artists/${id}/albums?include_groups=album,single&limit=${limit}`
   );
   return data?.items || [];
 }

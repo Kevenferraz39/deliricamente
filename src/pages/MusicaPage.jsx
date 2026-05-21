@@ -51,6 +51,7 @@ export default function MusicaPage() {
   const [albums, setAlbums] = React.useState({});
   const [topTracks, setTopTracks] = React.useState({});
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
   const [modal, setModal] = React.useState(null);
   const openModal = (type, id, name, subtitle, spotifyUrl) =>
     setModal({ type, id, name, subtitle: subtitle || '', spotifyUrl: spotifyUrl || null });
@@ -59,14 +60,31 @@ export default function MusicaPage() {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      const artData = await Promise.all(ARTIST_IDS.map(id => getArtist(id)));
-      const albData = await Promise.all(ARTIST_IDS.map(id => getArtistAlbums(id, 8)));
-      const trkData = await Promise.all(ARTIST_IDS.map(id => getArtistTopTracks(id)));
-      if (cancelled) return;
-      setArtists(artData.filter(Boolean));
-      const albMap = {}; ARTIST_IDS.forEach((id, i) => { albMap[id] = albData[i] || []; });
-      const trkMap = {}; ARTIST_IDS.forEach((id, i) => { trkMap[id] = trkData[i] || []; });
-      setAlbums(albMap); setTopTracks(trkMap); setLoading(false);
+      setError(null);
+      try {
+        const artData = await Promise.all(ARTIST_IDS.map(id => getArtist(id)));
+        if (cancelled) return;
+
+        const validArtists = artData.filter(Boolean);
+        if (validArtists.length === 0) {
+          setError('Não foi possível conectar ao Spotify. Verifique as credenciais no .env e reinicie o servidor.');
+          setLoading(false);
+          return;
+        }
+
+        const albData = await Promise.all(ARTIST_IDS.map(id => getArtistAlbums(id, 8)));
+        const trkData = await Promise.all(ARTIST_IDS.map(id => getArtistTopTracks(id)));
+        if (cancelled) return;
+
+        setArtists(validArtists);
+        const albMap = {}; ARTIST_IDS.forEach((id, i) => { albMap[id] = albData[i] || []; });
+        const trkMap = {}; ARTIST_IDS.forEach((id, i) => { trkMap[id] = trkData[i] || []; });
+        setAlbums(albMap); setTopTracks(trkMap);
+      } catch (e) {
+        if (!cancelled) setError('Erro ao carregar dados do Spotify: ' + e.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
     load();
     return () => { cancelled = true; };
@@ -128,6 +146,34 @@ export default function MusicaPage() {
           <div className="wrap">
             <div className="mono" style={{color:'var(--muted)',textAlign:'center',padding:'4rem 0'}}>
               // CARREGANDO DADOS DO SPOTIFY...
+            </div>
+          </div>
+        </section>
+      )}
+
+      {error && !loading && (
+        <section className="section tight" style={{paddingTop:0}}>
+          <div className="wrap">
+            <div style={{
+              background:'rgba(225,6,0,0.06)', border:'1px solid rgba(225,6,0,0.25)',
+              padding:'20px 24px', display:'flex', flexDirection:'column', gap:10,
+            }}>
+              <div className="mono" style={{color:'var(--red)',fontSize:'0.75rem'}}>// ERRO · SPOTIFY API</div>
+              <p style={{margin:0,color:'var(--text-body)',fontSize:'0.9rem'}}>{error}</p>
+              <button
+                onClick={() => { setError(null); setLoading(true); window.location.reload(); }}
+                style={{
+                  alignSelf:'flex-start', background:'transparent',
+                  border:'1px solid var(--gray)', color:'var(--muted)',
+                  fontFamily:'var(--font-mono)', fontSize:'0.72rem',
+                  padding:'6px 14px', cursor:'pointer', marginTop:4,
+                  transition:'all 0.15s',
+                }}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--off-white)';e.currentTarget.style.color='var(--off-white)';}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--gray)';e.currentTarget.style.color='var(--muted)';}}
+              >
+                Tentar novamente →
+              </button>
             </div>
           </div>
         </section>
