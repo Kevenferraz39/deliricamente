@@ -62,3 +62,6 @@ Desktop.ini
 # ── Testes ────────────────────────────────────────────────────
 coverage/
 .nyc_output/
+
+# ── Claude Code (estado local — worktrees, cache de sessão) ───
+.claude/

@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { db, auth } from './firebase.js';
 import { doc, collection, addDoc, setDoc, updateDoc, deleteDoc, getDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -59,7 +59,7 @@ function loadGoogleFont(name) {
 // NAV
 // ============================================================
 function Nav() {
-  const { user, navLogoUrl, mobileNav, setMobileNav } = React.useContext(AppContext);
+  const { user, navLogoUrl } = React.useContext(AppContext);
   const location = useLocation();
 
   if (location.pathname.startsWith('/admin')) return null;
@@ -71,63 +71,52 @@ function Nav() {
   };
 
   return (
-    <>
-      <nav className="nav">
-        <div className="wrap nav-inner">
-          <Link className="nav-brand" to="/" style={{ textDecoration: 'none' }}>
-            {navLogoUrl
-              ? <img src={navLogoUrl} alt="Logo" style={{ width: 40, height: 40, objectFit: 'contain', display: 'block' }} />
-              : <LogoMark size={40} />
-            }
-            <div>
-              Deliricamente
-              <small>// CAIEIRAS · SP</small>
-            </div>
-          </Link>
-
-          <div className="nav-links">
-            <Link className={'nav-link ' + (isActive('/') && location.pathname === '/' ? 'active' : '')} to="/">Início</Link>
-            <Link className={'nav-link ' + (isActive('/historia') ? 'active' : '')} to="/historia">História</Link>
-            <Link className={'nav-link ' + (isActive('/blog') ? 'active' : '')} to="/blog">Blog</Link>
-            <Link className={'nav-link ' + (isActive('/galeria') ? 'active' : '')} to="/galeria">Galeria</Link>
-            <Link className={'nav-link ' + (isActive('/musica') ? 'active' : '')} to="/musica">Música</Link>
-            <Link className={'nav-link ' + (isActive('/loja') ? 'active' : '')} to="/loja">Loja</Link>
-            <Link className={'nav-link ' + (isActive('/contato') ? 'active' : '')} to="/contato">Contato</Link>
-            {isAdmin(user)
-              ? <Link className="nav-cta" to="/admin/dashboard">Admin</Link>
-              : <Link to={user ? '/perfil' : '/admin'} className="nav-user-btn" title={user ? user.name : 'Entrar'}>
-                  {user
-                    ? <span className="nav-user-avatar">{(user.name || '?')[0].toUpperCase()}</span>
-                    : <Icon.User />
-                  }
-                </Link>
-            }
+    <nav className="nav">
+      <div className="wrap nav-inner">
+        <Link className="nav-brand" to="/" style={{ textDecoration: 'none' }}>
+          {navLogoUrl
+            ? <img src={navLogoUrl} alt="Logo" style={{ width: 40, height: 40, objectFit: 'contain', display: 'block' }} />
+            : <LogoMark size={40} />
+          }
+          <div>
+            Deliricamente
+            <small>// CAIEIRAS · SP</small>
           </div>
+        </Link>
 
-          <button className="nav-burger" onClick={() => setMobileNav(!mobileNav)}>
-            <span></span><span></span><span></span>
-          </button>
-        </div>
-      </nav>
-
-      {mobileNav && (
-        <div className="nav-mobile">
-          <Link className="nav-link" to="/" onClick={() => setMobileNav(false)}>Início</Link>
-          <Link className="nav-link" to="/historia" onClick={() => setMobileNav(false)}>História</Link>
-          <Link className="nav-link" to="/blog" onClick={() => setMobileNav(false)}>Blog</Link>
-          <Link className="nav-link" to="/galeria" onClick={() => setMobileNav(false)}>Galeria</Link>
-          <Link className="nav-link" to="/musica" onClick={() => setMobileNav(false)}>Música</Link>
-          <Link className="nav-link" to="/loja" onClick={() => setMobileNav(false)}>Loja</Link>
-          <Link className="nav-link" to="/contato" onClick={() => setMobileNav(false)}>Contato</Link>
+        <div className="nav-links">
+          <Link className={'nav-link ' + (isActive('/') && location.pathname === '/' ? 'active' : '')} to="/">Início</Link>
+          <Link className={'nav-link ' + (isActive('/historia') ? 'active' : '')} to="/historia">História</Link>
+          <Link className={'nav-link ' + (isActive('/blog') ? 'active' : '')} to="/blog">Blog</Link>
+          <Link className={'nav-link ' + (isActive('/galeria') ? 'active' : '')} to="/galeria">Galeria</Link>
+          <Link className={'nav-link ' + (isActive('/musica') ? 'active' : '')} to="/musica">Música</Link>
+          <Link className={'nav-link ' + (isActive('/loja') ? 'active' : '')} to="/loja">Loja</Link>
+          <Link className={'nav-link ' + (isActive('/contato') ? 'active' : '')} to="/contato">Contato</Link>
           {isAdmin(user)
-            ? <Link className="nav-cta" to="/admin/dashboard" onClick={() => setMobileNav(false)}>Admin</Link>
-            : <Link className="nav-link" to={user ? '/perfil' : '/admin'} onClick={() => setMobileNav(false)}>
-                {user ? `${(user.name || '').split(' ')[0]} · Perfil` : 'Entrar'}
+            ? <Link className="nav-cta" to="/admin/dashboard">Admin</Link>
+            : <Link to={user ? '/perfil' : '/admin'} className="nav-user-btn" title={user ? user.name : 'Entrar'}>
+                {user
+                  ? <span className="nav-user-avatar">{(user.name || '?')[0].toUpperCase()}</span>
+                  : <Icon.User />
+                }
               </Link>
           }
         </div>
-      )}
-    </>
+
+        {/* Ícone do usuário visível apenas no mobile (nav-links fica oculto) */}
+        <div className="nav-mobile-right">
+          {isAdmin(user)
+            ? <Link className="nav-cta" style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }} to="/admin/dashboard">Admin</Link>
+            : <Link to={user ? '/perfil' : '/admin'} className="nav-user-btn" title={user ? user.name : 'Entrar'}>
+                {user
+                  ? <span className="nav-user-avatar">{(user.name || '?')[0].toUpperCase()}</span>
+                  : <Icon.User />
+                }
+              </Link>
+          }
+        </div>
+      </div>
+    </nav>
   );
 }
 
@@ -150,6 +139,121 @@ function FooterWrapper() {
   const location = useLocation();
   if (location.pathname.startsWith('/admin')) return null;
   return <Footer />;
+}
+
+// ============================================================
+// MOBILE BOTTOM NAV
+// ============================================================
+const MobIcon = {
+  Home: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="22" height="22" {...p}>
+      <path d="M3 12L12 3l9 9" /><path d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9" />
+    </svg>
+  ),
+  Blog: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="22" height="22" {...p}>
+      <rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" />
+    </svg>
+  ),
+  Galeria: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="22" height="22" {...p}>
+      <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  ),
+  Musica: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="22" height="22" {...p}>
+      <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+    </svg>
+  ),
+  DotsGrid: (p) => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" {...p}>
+      <circle cx="5" cy="5" r="1.6" /><circle cx="12" cy="5" r="1.6" /><circle cx="19" cy="5" r="1.6" />
+      <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+      <circle cx="5" cy="19" r="1.6" /><circle cx="12" cy="19" r="1.6" /><circle cx="19" cy="19" r="1.6" />
+    </svg>
+  ),
+  Historia: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="24" height="24" {...p}>
+      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" />
+    </svg>
+  ),
+  Loja: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="24" height="24" {...p}>
+      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><path d="M3 6h18M16 10a4 4 0 01-8 0" />
+    </svg>
+  ),
+  Contato: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="24" height="24" {...p}>
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+    </svg>
+  ),
+  Perfil: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="24" height="24" {...p}>
+      <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  ),
+};
+
+function MobileBottomNav() {
+  const [showMais, setShowMais] = React.useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = React.useContext(AppContext);
+
+  if (location.pathname.startsWith('/admin')) return null;
+
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
+  const go = (path) => { navigate(path); setShowMais(false); };
+
+  return (
+    <>
+      {showMais && (
+        <>
+          <div className="mais-overlay" onClick={() => setShowMais(false)} />
+          <div className="mais-sheet">
+            <div className="mais-handle" />
+            <div className="mais-grid">
+              <button className="mais-item" onClick={() => go('/historia')}>
+                <MobIcon.Historia /><span>História</span>
+              </button>
+              <button className="mais-item" onClick={() => go('/loja')}>
+                <MobIcon.Loja /><span>Loja</span>
+              </button>
+              <button className="mais-item" onClick={() => go('/contato')}>
+                <MobIcon.Contato /><span>Contato</span>
+              </button>
+              <button className="mais-item" onClick={() => go(user ? '/perfil' : '/admin')}>
+                <MobIcon.Perfil />
+                <span>{user ? (user.name || 'Perfil').split(' ')[0] : 'Entrar'}</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+      <nav className="mobile-bottom-nav">
+        <button className={'mobile-tab' + (isActive('/') ? ' active' : '')} onClick={() => go('/')}>
+          <MobIcon.Home /><span>Início</span>
+        </button>
+        <button className={'mobile-tab' + (isActive('/blog') ? ' active' : '')} onClick={() => go('/blog')}>
+          <MobIcon.Blog /><span>Blog</span>
+        </button>
+        <button className={'mobile-tab' + (isActive('/galeria') ? ' active' : '')} onClick={() => go('/galeria')}>
+          <MobIcon.Galeria /><span>Galeria</span>
+        </button>
+        <button className={'mobile-tab' + (isActive('/musica') ? ' active' : '')} onClick={() => go('/musica')}>
+          <MobIcon.Musica /><span>Música</span>
+        </button>
+        <button className={'mobile-tab' + (showMais ? ' active' : '')} onClick={() => setShowMais(s => !s)}>
+          <MobIcon.DotsGrid /><span>Mais</span>
+        </button>
+      </nav>
+    </>
+  );
 }
 
 // ============================================================
@@ -205,7 +309,6 @@ function App() {
   }, []);
 
   const [user, setUser] = React.useState(null);
-  const [mobileNav, setMobileNav] = React.useState(false);
   const [bgConfig, setBgConfig] = React.useState({ style: 'blobs', speed: 1, density: 15, opacity: 0.85 });
   const [carouselConfig, setCarouselConfig] = React.useState({ enabled: false, slides: [], autoPlay: true, interval: 5 });
   const [heroLogoUrl, setHeroLogoUrl] = React.useState('');
@@ -358,7 +461,7 @@ function App() {
     carouselConfig,
     heroLogoUrl,
     navLogoUrl,
-    mobileNav, setMobileNav,
+
     login, logout,
     getComments, addComment, toggleLike,
     sessionId: sessionIdRef.current,
@@ -405,6 +508,7 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
         <FooterWrapper />
+        <MobileBottomNav />
       </BrowserRouter>
     </AppContext.Provider>
   );
