@@ -1468,3 +1468,8 @@ span:hover > .editable-btn-trigger { opacity: 1; }
 }
 .card-editor-bar:hover { background: rgba(255,255,255,0.04); }
 .card-editor-body { padding: 12px 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+
+/* ── Bloco dentro de card (nested) ──────────────────────── */
+.bz-block-inner { margin-bottom: 4px; background: rgba(255,255,255,0.02); }
+.bz-block-inner .bz-block-bar { padding: 5px 8px; }
+.bz-block-inner .bz-block-icon { width: 22px; height: 22px; font-size: 0.65rem; }
