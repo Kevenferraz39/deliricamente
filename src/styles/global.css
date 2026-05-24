@@ -1483,3 +1483,46 @@ span:hover > .editable-btn-trigger { opacity: 1; }
   display: flex; align-items: center; padding-bottom: 6px;
   border-bottom: 1px solid var(--line); margin-bottom: 6px;
 }
+
+/* ── BlockZone Overlay — editor full-screen ─────────────── */
+.bz-overlay-backdrop {
+  position: fixed; inset: 0; z-index: 9993;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(3px);
+}
+.bz-overlay-panel {
+  position: fixed;
+  top: 5vh; left: 5vw; right: 5vw; bottom: 60px;
+  z-index: 9994;
+  background: rgba(10,10,10,0.99);
+  border: 1px solid var(--red);
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.85);
+  overflow: hidden;
+}
+.bz-overlay-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; border-bottom: 1px solid var(--red);
+  background: rgba(225,6,0,0.06); flex-shrink: 0;
+}
+.bz-overlay-close {
+  display: flex; align-items: center; gap: 6px;
+  background: transparent; border: 1px solid var(--line);
+  color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem;
+  padding: 5px 12px; cursor: pointer; text-transform: uppercase;
+  transition: border-color 0.15s, color 0.15s;
+}
+.bz-overlay-close:hover { border-color: var(--off-white); color: var(--off-white); }
+.bz-overlay-body {
+  display: grid; grid-template-columns: 45% 55%;
+  flex: 1; overflow: hidden;
+}
+.bz-overlay-preview {
+  padding: 24px; overflow-y: auto;
+  border-right: 1px solid var(--line);
+  background: rgba(255,255,255,0.01);
+}
+.bz-overlay-editor {
+  padding: 20px; overflow-y: auto;
+}
+/* Remove a linha de toggle pois o painel agora é overlay */
+.bz-block-open .bz-block-bar { border-color: var(--red); background: rgba(225,6,0,0.06); }

@@ -642,6 +642,8 @@ export function BlockZone({ pageId, zoneKey, className='', style={} }) {
     );
   }
 
+  const expandedBlock = expandedId ? blocks.find(b => b.id===expandedId) : null;
+
   return (
     <div className={'bz-root '+className} style={style}>
       {blocks.map(block => {
@@ -649,6 +651,8 @@ export function BlockZone({ pageId, zoneKey, className='', style={} }) {
         const meta   = BLOCK_TYPES.find(t=>t.type===block.type)||{icon:'?',label:block.type};
         const preview= block.type==='card-grid'
           ? `${(block.cards||[]).length} cards · ${block.columns||3} colunas`
+          : block.type==='columns'
+          ? `${block.numCols||2} colunas`
           : block.text ? String(block.text).slice(0,40) : '';
         return (
           <div key={block.id} className={'bz-block'+(isOpen?' bz-block-open':'')}>
@@ -663,15 +667,49 @@ export function BlockZone({ pageId, zoneKey, className='', style={} }) {
               </div>
               <span className="bz-block-toggle">{isOpen?'▲':'▼'}</span>
             </div>
-            {isOpen && (
-              <div className="bz-block-body">
-                <div className="bz-preview"><ViewBlock block={block} /></div>
-                <div className="bz-editor"><EditBlock block={block} onChange={u=>updateBlock(block.id,u)} /></div>
-              </div>
-            )}
           </div>
         );
       })}
+
+      {/* Overlay de edição full-screen quando um bloco está expandido */}
+      {expandedBlock && (
+        <>
+          <div className="bz-overlay-backdrop" onClick={() => setExpandedId(null)} />
+          <div className="bz-overlay-panel">
+            <div className="bz-overlay-header">
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <span className="bz-block-icon" style={{flexShrink:0}}>
+                  {BLOCK_TYPES.find(t=>t.type===expandedBlock.type)?.icon||'?'}
+                </span>
+                <span style={{fontFamily:'var(--font-display)',fontSize:'1rem',textTransform:'uppercase',color:'var(--off-white)'}}>
+                  {BLOCK_TYPES.find(t=>t.type===expandedBlock.type)?.label||expandedBlock.type}
+                </span>
+                <span className="bz-block-preview" style={{marginLeft:4}}>
+                  {expandedBlock.type==='card-grid'
+                    ? `${(expandedBlock.cards||[]).length} cards`
+                    : expandedBlock.type==='columns'
+                    ? `${expandedBlock.numCols||2} colunas`
+                    : expandedBlock.text?.slice(0,40)||''}
+                </span>
+              </div>
+              <button className="bz-overlay-close" onClick={() => setExpandedId(null)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                Fechar
+              </button>
+            </div>
+            <div className="bz-overlay-body">
+              <div className="bz-overlay-preview">
+                <div className="mono" style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:8}}>// PREVIEW</div>
+                <ViewBlock block={expandedBlock} />
+              </div>
+              <div className="bz-overlay-editor">
+                <div className="mono" style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:8}}>// EDIÇÃO</div>
+                <EditBlock block={expandedBlock} onChange={u=>updateBlock(expandedBlock.id,u)} />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="bz-add-row">
         <button className="bz-add-trigger" onClick={()=>setAddOpen(o=>!o)}>
