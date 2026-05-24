@@ -104,7 +104,7 @@ function ViewBlock({ block }) {
       return <Tag style={{fontFamily:'var(--font-display)',textTransform:'uppercase',lineHeight:0.9,marginBottom:12,fontSize:fs,color:s.color||'inherit'}}>{s.text}</Tag>;
     }
     case 'text':
-      return <p style={{lineHeight:1.7,maxWidth:'72ch',color:s.color||'var(--text-body)',fontSize:s.size||'1rem',marginBottom:8}}>{s.text}</p>;
+      return <p style={{lineHeight:1.7,maxWidth:'72ch',color:s.color||'var(--text-body)',fontSize:s.size||'1rem',marginBottom:8,whiteSpace:'pre-wrap'}}>{s.text}</p>;
     case 'button':
       return (
         <a href={s.link||'/'} style={{display:'inline-flex',alignItems:'center',gap:8,padding:'12px 24px',fontFamily:'var(--font-mono)',fontSize:'0.8rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',textDecoration:'none',cursor:'pointer',border:'2px solid',...(s.variant==='ghost'?{background:'transparent',color:'var(--off-white)',borderColor:'var(--off-white)'}:s.variant==='outline'?{background:'transparent',color:'var(--red)',borderColor:'var(--red)'}:s.variant==='white'?{background:'#fff',color:'var(--black)',borderColor:'#fff'}:{background:'var(--red)',color:'#fff',borderColor:'var(--red)'})}}>
