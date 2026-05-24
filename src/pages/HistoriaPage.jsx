@@ -2,8 +2,14 @@ import React from 'react';
 import { db } from '../firebase.js';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { TIMELINE, COLLECTIVES } from '../data';
+import { useEditMode } from '../context/EditModeContext';
+import { EditableSection } from '../components/editor/EditableSection';
+
+const PAGE = 'historia';
 
 export default function HistoriaPage() {
+  const { loadPage } = useEditMode();
+  React.useEffect(() => { loadPage(PAGE); }, []);
   const [timeline, setTimeline] = React.useState(TIMELINE);
 
   React.useEffect(() => {
@@ -17,6 +23,7 @@ export default function HistoriaPage() {
 
   return (
     <div className="page-enter">
+      <EditableSection pageId={PAGE} sectionId="header" label="Cabeçalho">
       <section className="section tight" style={{paddingTop:112}}>
         <div className="wrap">
           <div className="kicker">// Trajetória</div>
@@ -92,6 +99,7 @@ export default function HistoriaPage() {
           </div>
         </div>
       </section>
+      </EditableSection>
     </div>
   );
 }

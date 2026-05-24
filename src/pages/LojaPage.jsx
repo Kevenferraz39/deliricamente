@@ -2,8 +2,14 @@ import React from 'react';
 import { db } from '../firebase.js';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Splatter, Placeholder } from '../components';
+import { useEditMode } from '../context/EditModeContext';
+import { EditableSection } from '../components/editor/EditableSection';
+
+const PAGE = 'loja';
 
 export default function LojaPage() {
+  const { loadPage } = useEditMode();
+  React.useEffect(() => { loadPage(PAGE); }, []);
   const STATIC_PRODUTOS = [
     { name:"Camiseta Logo Deliricamente", description:"Preta · Estampa branca", price:"R$ 65" },
     { name:"Moletom AGC", description:"Cinza · Bordado vermelho", price:"R$ 180" },
@@ -22,6 +28,7 @@ export default function LojaPage() {
 
   return (
     <div className="page-enter">
+      <EditableSection pageId={PAGE} sectionId="produtos" label="Loja — Produtos">
       <section className="loja-section">
         <Splatter color="var(--black)" opacity={0.55} />
         <div className="wrap loja-grid">
@@ -58,6 +65,7 @@ export default function LojaPage() {
           </div>
         </div>
       </section>
+      </EditableSection>
     </div>
   );
 }

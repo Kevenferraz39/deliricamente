@@ -3,8 +3,14 @@ import { db } from '../firebase.js';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Placeholder } from '../components';
 import { GALLERY } from '../data';
+import { useEditMode } from '../context/EditModeContext';
+import { EditableSection } from '../components/editor/EditableSection';
+
+const PAGE = 'galeria';
 
 export default function GaleriaPage() {
+  const { loadPage } = useEditMode();
+  React.useEffect(() => { loadPage(PAGE); }, []);
   const [gallery, setGallery] = React.useState(GALLERY);
   const [open, setOpen] = React.useState(null);
 
@@ -19,6 +25,7 @@ export default function GaleriaPage() {
 
   return (
     <div className="page-enter">
+      <EditableSection pageId={PAGE} sectionId="header" label="Cabeçalho + Galeria">
       <section className="section tight" style={{paddingTop:112}}>
         <div className="wrap">
           <div className="kicker">// Memória do coletivo</div>
@@ -54,6 +61,7 @@ export default function GaleriaPage() {
           </div>
         </div>
       )}
+      </EditableSection>
     </div>
   );
 }

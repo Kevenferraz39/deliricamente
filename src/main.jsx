@@ -6,9 +6,13 @@ import { doc, collection, addDoc, setDoc, updateDoc, deleteDoc, getDoc, onSnapsh
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import './styles/global.css';
 import { useSessionTimeout } from './hooks/useSessionTimeout.js';
-import { logAuth, LOG_ACTIONS } from './security/auditLogger.js';
+import { logAuth, logEvent, LOG_ACTIONS } from './security/auditLogger.js';
 
 import { AppContext } from './context/AppContext';
+import { EditModeProvider } from './context/EditModeContext';
+import { EditModeBar } from './components/editor/EditModeBar';
+import { StylePanel } from './components/editor/StylePanel';
+import { AddSectionModal } from './components/editor/AddSectionModal';
 import { SEED_POSTS } from './data';
 import { LogoMark, Icon } from './components';
 
@@ -96,7 +100,12 @@ function Nav() {
             ? <Link className="nav-cta" to="/admin/dashboard">Admin</Link>
             : <Link to={user ? '/perfil' : '/admin'} className="nav-user-btn" title={user ? user.name : 'Entrar'}>
                 {user
-                  ? <span className="nav-user-avatar">{(user.name || '?')[0].toUpperCase()}</span>
+                  ? <span className="nav-user-avatar" style={user.avatarColor && !user.avatarUrl ? { background: user.avatarColor } : {}}>
+                      {user.avatarUrl
+                        ? <img src={user.avatarUrl} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                        : (user.name || '?')[0].toUpperCase()
+                      }
+                    </span>
                   : <Icon.User />
                 }
               </Link>
@@ -109,7 +118,12 @@ function Nav() {
             ? <Link className="nav-cta" style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }} to="/admin/dashboard">Admin</Link>
             : <Link to={user ? '/perfil' : '/admin'} className="nav-user-btn" title={user ? user.name : 'Entrar'}>
                 {user
-                  ? <span className="nav-user-avatar">{(user.name || '?')[0].toUpperCase()}</span>
+                  ? <span className="nav-user-avatar" style={user.avatarColor && !user.avatarUrl ? { background: user.avatarColor } : {}}>
+                      {user.avatarUrl
+                        ? <img src={user.avatarUrl} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                        : (user.name || '?')[0].toUpperCase()
+                      }
+                    </span>
                   : <Icon.User />
                 }
               </Link>
@@ -323,14 +337,19 @@ function App() {
         const isMaster = fbUser.uid === MASTER_UID;
         try {
           const snap = await getDoc(doc(db, 'users', fbUser.uid));
-          const existingRole = snap.exists() ? snap.data().role : null;
+          const snapData = snap.exists() ? snap.data() : {};
+          const existingRole = snapData.role || null;
           const role = isMaster ? 'admin_master' : (existingRole || 'user');
-          setUser({ name: fbUser.displayName || fbUser.email.split('@')[0], role, email: fbUser.email, uid: fbUser.uid, isMaster });
-          const docData = { email: fbUser.email, displayName: fbUser.displayName || fbUser.email.split('@')[0], photoUrl: fbUser.photoURL || '', lastLogin: serverTimestamp() };
+          const name = snapData.displayName || fbUser.displayName || fbUser.email.split('@')[0];
+          const avatarUrl = snapData.avatarUrl || null;
+          const avatarColor = snapData.avatarColor || null;
+          setUser({ name, role, email: fbUser.email, uid: fbUser.uid, isMaster, avatarUrl, avatarColor });
+          const docData = { email: fbUser.email, photoUrl: fbUser.photoURL || '', lastLogin: serverTimestamp() };
+          if (!snapData.displayName) docData.displayName = fbUser.displayName || fbUser.email.split('@')[0];
           if (!existingRole || isMaster) { docData.role = isMaster ? 'admin_master' : 'user'; docData.active = true; }
           await setDoc(doc(db, 'users', fbUser.uid), docData, { merge: true });
         } catch (e) {
-          setUser({ name: fbUser.displayName || fbUser.email.split('@')[0], role: isMaster ? 'admin_master' : 'user', email: fbUser.email, uid: fbUser.uid, isMaster });
+          setUser({ name: fbUser.displayName || fbUser.email.split('@')[0], role: isMaster ? 'admin_master' : 'user', email: fbUser.email, uid: fbUser.uid, isMaster, avatarUrl: null, avatarColor: null });
           console.warn('User doc:', e.message);
         }
       } else { setUser(null); }
@@ -412,13 +431,29 @@ function App() {
         await logAuth(LOG_ACTIONS.auth_login_failed, userData.email, userData.uid, false, 'Conta inativa');
         return;
       }
-      const fullUser = { ...userData, role: firestoreRole };
+      const snapData = snap.exists() ? snap.data() : {};
+      const fullUser = {
+        ...userData,
+        role: firestoreRole,
+        name: snapData.displayName || userData.name,
+        avatarUrl: snapData.avatarUrl || null,
+        avatarColor: snapData.avatarColor || null,
+      };
       setUser(fullUser);
       await logAuth(LOG_ACTIONS.auth_login, userData.email, userData.uid, true, null);
     } catch (e) {
       setUser(userData);
       await logAuth(LOG_ACTIONS.auth_login, userData.email, userData.uid, true, null);
     }
+  };
+
+  const updateProfile = async (newName, newAvatarColor, newAvatarUrl) => {
+    if (!user) return;
+    const patch = { displayName: newName, avatarColor: newAvatarColor || null };
+    if (newAvatarUrl !== undefined) patch.avatarUrl = newAvatarUrl || null;
+    await updateDoc(doc(db, 'users', user.uid), patch);
+    setUser({ ...user, name: newName, avatarColor: newAvatarColor || null, avatarUrl: newAvatarUrl !== undefined ? (newAvatarUrl || null) : (user.avatarUrl || null) });
+    await logEvent(LOG_ACTIONS.user_profile_update, { newName }, user);
   };
 
   const logout = async (reason = 'manual') => {
@@ -462,13 +497,14 @@ function App() {
     heroLogoUrl,
     navLogoUrl,
 
-    login, logout,
+    login, logout, updateProfile,
     getComments, addComment, toggleLike,
     sessionId: sessionIdRef.current,
   };
 
   return (
     <AppContext.Provider value={contextValue}>
+      <EditModeProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         {/* Aviso de sessão prestes a expirar por inatividade */}
         {sessionWarning && (
@@ -509,7 +545,11 @@ function App() {
         </Routes>
         <FooterWrapper />
         <MobileBottomNav />
+        <EditModeBar />
+        <StylePanel />
+        <AddSectionModal />
       </BrowserRouter>
+      </EditModeProvider>
     </AppContext.Provider>
   );
 }

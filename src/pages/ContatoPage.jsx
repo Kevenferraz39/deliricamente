@@ -1,7 +1,13 @@
 import React from 'react';
 import { Btn, Icon } from '../components';
+import { useEditMode } from '../context/EditModeContext';
+import { EditableSection } from '../components/editor/EditableSection';
+
+const PAGE = 'contato';
 
 export default function ContatoPage() {
+  const { loadPage } = useEditMode();
+  React.useEffect(() => { loadPage(PAGE); }, []);
   const [form, setForm] = React.useState({ nome:"", email:"", assunto:"booking", msg:"" });
   const [sent, setSent] = React.useState(false);
 
@@ -9,6 +15,7 @@ export default function ContatoPage() {
 
   return (
     <div className="page-enter">
+      <EditableSection pageId={PAGE} sectionId="form" label="Contato">
       <section className="section tight" style={{paddingTop:112}}>
         <div className="wrap">
           <div className="kicker">// Fala com o coletivo</div>
@@ -78,6 +85,7 @@ export default function ContatoPage() {
           </div>
         </div>
       </section>
+      </EditableSection>
     </div>
   );
 }

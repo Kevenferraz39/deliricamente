@@ -116,6 +116,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── PAGES (editor visual — config de seções e conteúdo) ──────────
+    match /pages/{pageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // ── LOGS (audit trail imutável) ──────────────────────────────────
     // Só master lê.
     // Qualquer origem pode criar (incluindo não autenticados) para capturar

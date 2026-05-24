@@ -1,5 +1,9 @@
 import React from 'react';
 import { getArtist, getArtistAlbums, getArtistTopTracks, embedUrl, ARTIST_IDS, PLAYLIST_ID } from '../spotify.js';
+import { useEditMode } from '../context/EditModeContext';
+import { EditableSection } from '../components/editor/EditableSection';
+
+const PAGE = 'musica';
 
 // Limpa o cache do Spotify no localStorage para forçar nova busca
 function clearSpotifyCache() {
@@ -52,6 +56,8 @@ function SpotifyModal({ modal, onClose }) {
 }
 
 export default function MusicaPage() {
+  const { loadPage } = useEditMode();
+  React.useEffect(() => { loadPage(PAGE); }, []);
   const [artists, setArtists] = React.useState([]);
   const [albums, setAlbums] = React.useState({});
   const [topTracks, setTopTracks] = React.useState({});
@@ -108,6 +114,7 @@ export default function MusicaPage() {
 
   return (
     <div className="page-enter">
+      <EditableSection pageId={PAGE} sectionId="header" label="Cabeçalho + Música">
       {/* HEADER */}
       <section className="section tight" style={{paddingTop:112, paddingBottom:40}}>
         <div className="wrap">
@@ -341,6 +348,7 @@ export default function MusicaPage() {
       })}
 
       <SpotifyModal modal={modal} onClose={() => setModal(null)} />
+      </EditableSection>
     </div>
   );
 }

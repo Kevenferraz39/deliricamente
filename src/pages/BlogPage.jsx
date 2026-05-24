@@ -1,12 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useEditMode } from '../context/EditModeContext';
 import { Placeholder, Icon } from '../components';
+import { EditableSection } from '../components/editor/EditableSection';
 import { fmtDate } from './HomePage';
+
+const PAGE = 'blog';
 
 export default function BlogPage() {
   const navigate = useNavigate();
   const { posts } = useApp();
+  const { loadPage } = useEditMode();
+  React.useEffect(() => { loadPage(PAGE); }, []);
   const [q, setQ] = React.useState("");
   const [tag, setTag] = React.useState("Todos");
   const tags = ["Todos", "EVENTO", "SHOW", "NOTÍCIA", "CULTURA", "ANÚNCIO"];
@@ -17,6 +23,7 @@ export default function BlogPage() {
 
   return (
     <div className="page-enter">
+      <EditableSection pageId={PAGE} sectionId="header" label="Cabeçalho">
       <section className="section tight" style={{paddingTop:112}}>
         <div className="wrap">
           <div className="kicker">// Arquivo</div>
@@ -65,6 +72,7 @@ export default function BlogPage() {
           </div>
         </div>
       </section>
+      </EditableSection>
     </div>
   );
 }
