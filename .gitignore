@@ -65,3 +65,12 @@ coverage/
 
 # ── Claude Code (estado local — worktrees, cache de sessão) ───
 .claude/
+
+# ── Vite ──────────────────────────────────────────────────────
+.vite/
+vite.config.js.timestamp-*
+
+# ── Misc ──────────────────────────────────────────────────────
+*.pem
+.eslintcache
+*.tsbuildinfo
