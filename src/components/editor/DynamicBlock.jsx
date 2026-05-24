@@ -123,6 +123,14 @@ export function DynamicBlock({ pageId, section }) {
       );
     }
 
+    case 'empty':
+      // Seção vazia — o conteúdo vem inteiramente do BlockZone (injetado pelo EditableSection)
+      return (
+        <section className="section tight">
+          <div className="wrap" style={{ minHeight: 40 }} />
+        </section>
+      );
+
     default:
       return null;
   }

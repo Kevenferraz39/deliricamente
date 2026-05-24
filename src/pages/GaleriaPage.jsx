@@ -6,6 +6,7 @@ import { GALLERY } from '../data';
 import { useEditMode } from '../context/EditModeContext';
 import { EditableSection } from '../components/editor/EditableSection';
 import { EditableText } from '../components/editor/EditableText';
+import { DynamicSectionsRenderer } from '../components/editor/DynamicSectionsRenderer';
 
 const PAGE = 'galeria';
 
@@ -60,6 +61,8 @@ export default function GaleriaPage() {
         </div>
       </section>
       </EditableSection>
+
+      <DynamicSectionsRenderer pageId={PAGE} />
 
       {open && (
         <div className="lightbox" onClick={() => setOpen(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.92)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>

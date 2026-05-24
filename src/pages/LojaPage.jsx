@@ -5,6 +5,7 @@ import { Splatter, Placeholder } from '../components';
 import { useEditMode } from '../context/EditModeContext';
 import { EditableSection } from '../components/editor/EditableSection';
 import { EditableText } from '../components/editor/EditableText';
+import { DynamicSectionsRenderer } from '../components/editor/DynamicSectionsRenderer';
 
 const PAGE = 'loja';
 
@@ -76,6 +77,7 @@ export default function LojaPage() {
         </div>
       </section>
       </EditableSection>
+      <DynamicSectionsRenderer pageId={PAGE} />
     </div>
   );
 }

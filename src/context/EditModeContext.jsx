@@ -92,8 +92,13 @@ export function EditModeProvider({ children }) {
 
   const isSectionVisible = React.useCallback((pageId, sectionId) => {
     const s = getConfig(pageId).sections.find(s => s.id === sectionId);
-    return s ? s.visible !== false : true;
-  }, [getConfig]);
+    if (!s) {
+      // Se a página já foi carregada do Firestore e a seção não está no array = foi deletada
+      if (configs[pageId] !== undefined) return false;
+      return true; // Página ainda não carregada — exibe por padrão
+    }
+    return s.visible !== false;
+  }, [getConfig, configs]);
 
   const getContent = React.useCallback((pageId, key) =>
     getConfig(pageId).content[key],

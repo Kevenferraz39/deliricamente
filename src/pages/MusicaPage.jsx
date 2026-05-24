@@ -3,6 +3,7 @@ import { getArtist, getArtistAlbums, getArtistTopTracks, embedUrl, ARTIST_IDS, P
 import { useEditMode } from '../context/EditModeContext';
 import { EditableSection } from '../components/editor/EditableSection';
 import { EditableText } from '../components/editor/EditableText';
+import { DynamicSectionsRenderer } from '../components/editor/DynamicSectionsRenderer';
 
 const PAGE = 'musica';
 
@@ -258,6 +259,7 @@ export default function MusicaPage() {
       </EditableSection>
 
       <SpotifyModal modal={modal} onClose={() => setModal(null)} />
+      <DynamicSectionsRenderer pageId={PAGE} />
     </div>
   );
 }

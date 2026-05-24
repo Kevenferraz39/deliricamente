@@ -6,6 +6,7 @@ import { Placeholder, Icon } from '../components';
 import { EditableSection } from '../components/editor/EditableSection';
 import { EditableText } from '../components/editor/EditableText';
 import { fmtDate } from './HomePage';
+import { DynamicSectionsRenderer } from '../components/editor/DynamicSectionsRenderer';
 
 const PAGE = 'blog';
 
@@ -82,6 +83,7 @@ export default function BlogPage() {
         </div>
       </section>
       </EditableSection>
+      <DynamicSectionsRenderer pageId={PAGE} />
     </div>
   );
 }

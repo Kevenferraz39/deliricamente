@@ -3,6 +3,13 @@ import { useEditMode } from '../../context/EditModeContext';
 
 const TEMPLATES = [
   {
+    type: 'empty',
+    label: 'Seção Vazia',
+    icon: '□',
+    description: 'Seção em branco. Adicione blocos à vontade usando o editor.',
+    defaultContent: [],
+  },
+  {
     type: 'text-block',
     label: 'Bloco de Texto',
     icon: '¶',

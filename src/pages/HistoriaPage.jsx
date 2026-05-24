@@ -6,6 +6,7 @@ import { useEditMode } from '../context/EditModeContext';
 import { EditableSection } from '../components/editor/EditableSection';
 import { EditableText } from '../components/editor/EditableText';
 import { EditableCardGrid } from '../components/editor/EditableCardGrid';
+import { DynamicSectionsRenderer } from '../components/editor/DynamicSectionsRenderer';
 
 const PAGE = 'historia';
 
@@ -150,6 +151,7 @@ export default function HistoriaPage() {
         </section>
       </EditableSection>
 
+      <DynamicSectionsRenderer pageId={PAGE} />
     </div>
   );
 }
