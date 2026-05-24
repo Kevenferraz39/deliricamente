@@ -4,12 +4,14 @@ import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Splatter, Placeholder } from '../components';
 import { useEditMode } from '../context/EditModeContext';
 import { EditableSection } from '../components/editor/EditableSection';
+import { EditableText } from '../components/editor/EditableText';
 
 const PAGE = 'loja';
 
 export default function LojaPage() {
   const { loadPage } = useEditMode();
   React.useEffect(() => { loadPage(PAGE); }, []);
+
   const STATIC_PRODUTOS = [
     { name:"Camiseta Logo Deliricamente", description:"Preta · Estampa branca", price:"R$ 65" },
     { name:"Moletom AGC", description:"Cinza · Bordado vermelho", price:"R$ 180" },
@@ -33,15 +35,23 @@ export default function LojaPage() {
         <Splatter color="var(--black)" opacity={0.55} />
         <div className="wrap loja-grid">
           <div>
-            <div className="kicker" style={{color:"var(--off-white)"}}>// Produtos oficiais</div>
-            <h2>VESTE A <em>CAMISA</em><br/>DA QUEBRADA</h2>
-            <p>
-              Camisetas, moletons, bonés, fanzines e vinis do selo independente do AGC. Cada
-              compra ajuda a financiar a próxima EPIFANIA, as oficinas e as ações de
-              arrecadação.
-            </p>
+            <div className="kicker" style={{color:"var(--off-white)"}}>
+              <EditableText pageId={PAGE} contentKey="hero.kicker" defaultValue="// Produtos oficiais" tag="span" />
+            </div>
+            <h2>
+              <EditableText pageId={PAGE} contentKey="hero.title1" defaultValue="VESTE A " tag="span" styleKey="hero.title1" />
+              <em>
+                <EditableText pageId={PAGE} contentKey="hero.title2" defaultValue="CAMISA" tag="span" styleKey="hero.title2" />
+              </em>
+              <br/>
+              <EditableText pageId={PAGE} contentKey="hero.title3" defaultValue="DA QUEBRADA" tag="span" styleKey="hero.title3" />
+            </h2>
+            <EditableText pageId={PAGE} contentKey="hero.body"
+              defaultValue="Camisetas, moletons, bonés, fanzines e vinis do selo independente do AGC. Cada compra ajuda a financiar a próxima EPIFANIA, as oficinas e as ações de arrecadação."
+              tag="p" multiline styleKey="hero.body" />
             <div className="mono" style={{marginTop:24,color:"rgba(255,255,255,.8)"}}>
-              // FRETE PRA TODO BRASIL · ENVIO EM ATÉ 7 DIAS ÚTEIS
+              <EditableText pageId={PAGE} contentKey="hero.frete"
+                defaultValue="// FRETE PRA TODO BRASIL · ENVIO EM ATÉ 7 DIAS ÚTEIS" tag="span" />
             </div>
           </div>
 

@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { useEditMode } from '../context/EditModeContext';
 import { Placeholder, Icon } from '../components';
 import { EditableSection } from '../components/editor/EditableSection';
+import { EditableText } from '../components/editor/EditableText';
 import { fmtDate } from './HomePage';
 
 const PAGE = 'blog';
@@ -23,12 +24,17 @@ export default function BlogPage() {
 
   return (
     <div className="page-enter">
-      <EditableSection pageId={PAGE} sectionId="header" label="Cabeçalho">
+      <EditableSection pageId={PAGE} sectionId="header" label="Cabeçalho + Posts">
       <section className="section tight" style={{paddingTop:112}}>
         <div className="wrap">
-          <div className="kicker">// Arquivo</div>
+          <div className="kicker">
+            <EditableText pageId={PAGE} contentKey="header.kicker" defaultValue="// Arquivo" tag="span" />
+          </div>
           <h1 className="display" style={{fontSize:"clamp(56px,9vw,130px)",lineHeight:0.85,margin:"12px 0 32px",textTransform:"uppercase"}}>
-            BLOG &<br/><span style={{color:"var(--red)"}}>POSTS</span>
+            <EditableText pageId={PAGE} contentKey="header.title1" defaultValue="BLOG &" tag="span" styleKey="header.title1" />
+            <br/>
+            <EditableText pageId={PAGE} contentKey="header.title2" defaultValue="POSTS" tag="span"
+              style={{color:"var(--red)"}} styleKey="header.title2" />
           </h1>
 
           <div className="blog-tools">
@@ -51,7 +57,10 @@ export default function BlogPage() {
                 <div className="post-cover">
                   <span className="badge">{p.type}</span>
                   <span className="date">{fmtDate(p.date).join(" · ")}</span>
-                  {p.cover?.url ? <img src={p.cover.url} alt={p.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:(p.cover?.position ? 'center '+p.cover.position : 'center top'),display:'block'}} /> : <Placeholder label={p.cover?.label} variant={p.cover?.variant} />}
+                  {p.cover?.url
+                    ? <img src={p.cover.url} alt={p.title} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:(p.cover?.position ? 'center '+p.cover.position : 'center top'),display:'block'}} />
+                    : <Placeholder label={p.cover?.label} variant={p.cover?.variant} />
+                  }
                 </div>
                 <div className="post-body">
                   <h3>{p.title}</h3>

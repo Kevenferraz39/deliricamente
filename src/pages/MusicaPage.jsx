@@ -2,26 +2,23 @@ import React from 'react';
 import { getArtist, getArtistAlbums, getArtistTopTracks, embedUrl, ARTIST_IDS, PLAYLIST_ID } from '../spotify.js';
 import { useEditMode } from '../context/EditModeContext';
 import { EditableSection } from '../components/editor/EditableSection';
+import { EditableText } from '../components/editor/EditableText';
 
 const PAGE = 'musica';
 
-// Limpa o cache do Spotify no localStorage para forçar nova busca
 function clearSpotifyCache() {
   Object.keys(localStorage).filter(k => k.startsWith('sp_')).forEach(k => localStorage.removeItem(k));
 }
 
 function SpotifyModal({ modal, onClose }) {
   if (!modal) return null;
-
   React.useEffect(() => {
     const fn = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', fn);
     return () => document.removeEventListener('keydown', fn);
   }, [onClose]);
-
   const embedH = modal.type === 'track' ? 152 : modal.type === 'playlist' ? 352 : 380;
   const typeLabel = modal.type === 'track' ? '♪ FAIXA' : modal.type === 'album' ? '◉ ÁLBUM' : '≡ PLAYLIST';
-
   return (
     <div className="sp-modal-backdrop" onClick={onClose}>
       <div className="sp-modal" onClick={e => e.stopPropagation()}>
@@ -33,23 +30,14 @@ function SpotifyModal({ modal, onClose }) {
           </div>
           <div className="sp-modal-actions">
             {modal.spotifyUrl && (
-              <a href={modal.spotifyUrl} target="_blank" rel="noopener noreferrer" className="sp-open-btn">
-                Spotify ↗
-              </a>
+              <a href={modal.spotifyUrl} target="_blank" rel="noopener noreferrer" className="sp-open-btn">Spotify ↗</a>
             )}
             <button className="sp-close-btn" onClick={onClose}>✕</button>
           </div>
         </div>
-        <iframe
-          title={modal.name}
-          src={embedUrl(modal.type, modal.id)}
-          width="100%"
-          height={embedH}
-          frameBorder="0"
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          loading="lazy"
-          style={{display:'block'}}
-        />
+        <iframe title={modal.name} src={embedUrl(modal.type, modal.id)} width="100%" height={embedH}
+          frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy" style={{display:'block'}} />
       </div>
     </div>
   );
@@ -70,23 +58,18 @@ export default function MusicaPage() {
   React.useEffect(() => {
     let cancelled = false;
     async function load() {
-      setLoading(true);
-      setError(null);
+      setLoading(true); setError(null);
       try {
         const artData = await Promise.all(ARTIST_IDS.map(id => getArtist(id)));
         if (cancelled) return;
-
         const validArtists = artData.filter(Boolean);
         if (validArtists.length === 0) {
-          setError('Não foi possível conectar ao Spotify. Erro de requisição, contate os responsaveis para que seja resolvido!');
-          setLoading(false);
-          return;
+          setError('Não foi possível conectar ao Spotify. Contate os responsáveis para que seja resolvido!');
+          setLoading(false); return;
         }
-
         const albData = await Promise.all(ARTIST_IDS.map(id => getArtistAlbums(id, 8)));
         const trkData = await Promise.all(ARTIST_IDS.map(id => getArtistTopTracks(id)));
         if (cancelled) return;
-
         setArtists(validArtists);
         const albMap = {}; ARTIST_IDS.forEach((id, i) => { albMap[id] = albData[i] || []; });
         const trkMap = {}; ARTIST_IDS.forEach((id, i) => { trkMap[id] = trkData[i] || []; });
@@ -105,7 +88,6 @@ export default function MusicaPage() {
     const m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000);
     return `${m}:${String(s).padStart(2,'0')}`;
   };
-
   const albumTypeLabel = (type) => {
     if (type === 'single') return 'SINGLE';
     if (type === 'compilation') return 'COMP.';
@@ -114,83 +96,73 @@ export default function MusicaPage() {
 
   return (
     <div className="page-enter">
-      <EditableSection pageId={PAGE} sectionId="header" label="Cabeçalho + Música">
-      {/* HEADER */}
+      {/* ── Cabeçalho ── */}
+      <EditableSection pageId={PAGE} sectionId="header" label="Cabeçalho">
       <section className="section tight" style={{paddingTop:112, paddingBottom:40}}>
         <div className="wrap">
-          <div className="kicker">// MÚSICA · DELIRICAMENTE</div>
+          <div className="kicker">
+            <EditableText pageId={PAGE} contentKey="header.kicker" defaultValue="// MÚSICA · DELIRICAMENTE" tag="span" />
+          </div>
           <h1 style={{fontSize:'clamp(3rem,8vw,7rem)',margin:'8px 0 16px',lineHeight:0.88}}>
-            <span style={{color:'var(--red)'}}>SONS</span><br/>
-            <span style={{color:'var(--off-white)'}}>DO COLETIVO</span>
+            <EditableText pageId={PAGE} contentKey="header.title1" defaultValue="SONS" tag="span"
+              style={{color:'var(--red)'}} styleKey="header.title1" />
+            <br/>
+            <EditableText pageId={PAGE} contentKey="header.title2" defaultValue="DO COLETIVO" tag="span"
+              style={{color:'var(--off-white)'}} styleKey="header.title2" />
           </h1>
-          <p style={{color:'var(--text-body)',maxWidth:'50ch',marginBottom:0}}>
-            Ouça a playlist oficial, acompanhe os lançamentos e as faixas mais tocadas dos artistas do Deliricamente.
-          </p>
+          <EditableText pageId={PAGE} contentKey="header.subtitle"
+            defaultValue="Ouça a playlist oficial, acompanhe os lançamentos e as faixas mais tocadas dos artistas do Deliricamente."
+            tag="p" styleKey="header.subtitle" multiline
+            style={{color:'var(--text-body)',maxWidth:'50ch',marginBottom:0}} />
         </div>
       </section>
+      </EditableSection>
 
-      {/* PLAYLIST OFICIAL */}
+      {/* ── Playlist ── */}
+      <EditableSection pageId={PAGE} sectionId="playlist" label="Playlist Oficial">
       <section className="section tight" style={{paddingTop:0, paddingBottom:56}}>
         <div className="wrap">
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
-            <div className="kicker" style={{marginBottom:0}}>// PLAYLIST OFICIAL</div>
+            <div className="kicker" style={{marginBottom:0}}>
+              <EditableText pageId={PAGE} contentKey="playlist.kicker" defaultValue="// PLAYLIST OFICIAL" tag="span" />
+            </div>
             <a href={`https://open.spotify.com/playlist/${PLAYLIST_ID}`} target="_blank" rel="noopener noreferrer" className="sp-open-btn">
               Abrir no Spotify ↗
             </a>
           </div>
           <div className="playlist-section">
-            <iframe
-              title="Playlist Deliricamente"
-              src={embedUrl('playlist', PLAYLIST_ID)}
-              width="100%"
-              height={400}
-              frameBorder="0"
+            <iframe title="Playlist Deliricamente" src={embedUrl('playlist', PLAYLIST_ID)}
+              width="100%" height={400} frameBorder="0"
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-              style={{display:'block'}}
-            />
+              loading="lazy" style={{display:'block'}} />
           </div>
         </div>
       </section>
+      </EditableSection>
 
+      {/* ── Loading ── */}
       {loading && (
         <section className="section tight" style={{paddingTop:0}}>
           <div className="wrap">
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:16,padding:'4rem 0'}}>
-              <div style={{
-                width:40,height:40,borderRadius:'50%',
-                border:'3px solid var(--gray)',borderTopColor:'#1DB954',
-                animation:'spin 0.9s linear infinite',
-              }} />
-              <div className="mono" style={{color:'var(--muted)',fontSize:'0.8rem'}}>
-                // CARREGANDO DADOS DO SPOTIFY...
-              </div>
+              <div style={{width:40,height:40,borderRadius:'50%',border:'3px solid var(--gray)',borderTopColor:'#1DB954',animation:'spin 0.9s linear infinite'}} />
+              <div className="mono" style={{color:'var(--muted)',fontSize:'0.8rem'}}>// CARREGANDO DADOS DO SPOTIFY...</div>
             </div>
           </div>
         </section>
       )}
 
+      {/* ── Erro ── */}
       {error && !loading && (
         <section className="section tight" style={{paddingTop:0}}>
           <div className="wrap">
-            <div style={{
-              background:'rgba(225,6,0,0.06)', border:'1px solid rgba(225,6,0,0.25)',
-              padding:'20px 24px', display:'flex', flexDirection:'column', gap:10,
-            }}>
+            <div style={{background:'rgba(225,6,0,0.06)',border:'1px solid rgba(225,6,0,0.25)',padding:'20px 24px',display:'flex',flexDirection:'column',gap:10}}>
               <div className="mono" style={{color:'var(--red)',fontSize:'0.75rem'}}>// ERRO · BAD REQUEST</div>
               <p style={{margin:0,color:'var(--text-body)',fontSize:'0.9rem'}}>{error}</p>
-              <button
-                onClick={() => { clearSpotifyCache(); setError(null); setLoading(true); window.location.reload(); }}
-                style={{
-                  alignSelf:'flex-start', background:'transparent',
-                  border:'1px solid var(--gray)', color:'var(--muted)',
-                  fontFamily:'var(--font-mono)', fontSize:'0.72rem',
-                  padding:'6px 14px', cursor:'pointer', marginTop:4,
-                  transition:'all 0.15s',
-                }}
+              <button onClick={() => { clearSpotifyCache(); setError(null); setLoading(true); window.location.reload(); }}
+                style={{alignSelf:'flex-start',background:'transparent',border:'1px solid var(--gray)',color:'var(--muted)',fontFamily:'var(--font-mono)',fontSize:'0.72rem',padding:'6px 14px',cursor:'pointer',marginTop:4,transition:'all 0.15s'}}
                 onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--off-white)';e.currentTarget.style.color='var(--off-white)';}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--gray)';e.currentTarget.style.color='var(--muted)';}}
-              >
+                onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--gray)';e.currentTarget.style.color='var(--muted)';}}>
                 Tentar novamente →
               </button>
             </div>
@@ -198,92 +170,51 @@ export default function MusicaPage() {
         </section>
       )}
 
-      {/* ARTISTAS */}
+      {/* ── Artistas ── */}
+      <EditableSection pageId={PAGE} sectionId="artists" label="Artistas">
       {artists.map((artist, ai) => {
         if (!artist) return null;
         const artistAlbums = albums[artist.id] || [];
         const artistTracks = topTracks[artist.id] || [];
         const bannerImg = artist.images?.[0]?.url || '';
-
         return (
           <section key={artist.id} className="section" style={{paddingTop: ai === 0 ? '2rem' : '5rem'}}>
             <div className="wrap">
-              {/* Artist Banner */}
               <div className="artist-banner">
-                {bannerImg && (
-                  <div className="artist-banner-bg" style={{backgroundImage:`url(${bannerImg})`}} />
-                )}
+                {bannerImg && <div className="artist-banner-bg" style={{backgroundImage:`url(${bannerImg})`}} />}
                 <div className="artist-banner-content">
-                  {bannerImg && (
-                    <img src={bannerImg} alt={artist.name}
-                      style={{width:88,height:88,borderRadius:'50%',objectFit:'cover',
-                        border:'3px solid var(--red)',flexShrink:0,
-                        boxShadow:'0 0 0 4px rgba(225,6,0,0.2)'}} />
-                  )}
+                  {bannerImg && <img src={bannerImg} alt={artist.name} style={{width:88,height:88,borderRadius:'50%',objectFit:'cover',border:'3px solid var(--red)',flexShrink:0,boxShadow:'0 0 0 4px rgba(225,6,0,0.2)'}} />}
                   <div style={{flex:1,minWidth:0}}>
                     <div className="kicker" style={{marginBottom:4}}>// ARTISTA</div>
-                    <h2 style={{fontSize:'clamp(1.8rem,4vw,3rem)',margin:'0 0 6px',lineHeight:0.95,color:'var(--off-white)'}}>
-                      {artist.name}
-                    </h2>
+                    <h2 style={{fontSize:'clamp(1.8rem,4vw,3rem)',margin:'0 0 6px',lineHeight:0.95,color:'var(--off-white)'}}>{artist.name}</h2>
                     <div className="mono" style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.5)',display:'flex',gap:16,flexWrap:'wrap'}}>
-                      {artist.followers?.total && (
-                        <span>{artist.followers.total.toLocaleString('pt-BR')} SEGUIDORES</span>
-                      )}
-                      {artist.genres?.length > 0 && (
-                        <span>{artist.genres.slice(0,2).join(' · ').toUpperCase()}</span>
-                      )}
+                      {artist.followers?.total && <span>{artist.followers.total.toLocaleString('pt-BR')} SEGUIDORES</span>}
+                      {artist.genres?.length > 0 && <span>{artist.genres.slice(0,2).join(' · ').toUpperCase()}</span>}
                     </div>
                   </div>
-                  <a href={artist.external_urls?.spotify} target="_blank" rel="noopener noreferrer"
-                    className="sp-open-btn" style={{fontSize:'0.75rem',padding:'8px 18px'}}>
-                    SPOTIFY ↗
-                  </a>
+                  <a href={artist.external_urls?.spotify} target="_blank" rel="noopener noreferrer" className="sp-open-btn" style={{fontSize:'0.75rem',padding:'8px 18px'}}>SPOTIFY ↗</a>
                 </div>
               </div>
 
-              {/* LANÇAMENTOS */}
               {artistAlbums.length > 0 && (
                 <>
                   <div className="kicker" style={{marginBottom:16}}>// LANÇAMENTOS</div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:16,marginBottom:48}}>
                     {artistAlbums.map(album => (
-                      <div key={album.id} className="album-card"
-                        onClick={() => openModal('album', album.id, album.name,
-                          `${albumTypeLabel(album.album_type)} · ${album.release_date?.slice(0,4)}`,
-                          album.external_urls?.spotify)}>
+                      <div key={album.id} className="album-card" onClick={() => openModal('album', album.id, album.name, `${albumTypeLabel(album.album_type)} · ${album.release_date?.slice(0,4)}`, album.external_urls?.spotify)}>
                         <div style={{aspectRatio:'1',overflow:'hidden',position:'relative'}}>
                           {album.images?.[0]?.url
-                            ? <img src={album.images[0].url} alt={album.name}
-                                className="album-thumb-img"
-                                style={{width:'100%',height:'100%',objectFit:'cover',display:'block',transition:'transform 0.3s'}} />
-                            : <div style={{width:'100%',height:'100%',background:'var(--gray)',
-                                display:'flex',alignItems:'center',justifyContent:'center',
-                                color:'var(--muted)',fontSize:32}}>♪</div>
+                            ? <img src={album.images[0].url} alt={album.name} className="album-thumb-img" style={{width:'100%',height:'100%',objectFit:'cover',display:'block',transition:'transform 0.3s'}} />
+                            : <div style={{width:'100%',height:'100%',background:'var(--gray)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontSize:32}}>♪</div>
                           }
-                          <div className="album-play-overlay"
-                            style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.55)',
-                              display:'flex',alignItems:'center',justifyContent:'center',
-                              opacity:0,transition:'opacity 0.2s'}}>
-                            <div style={{width:48,height:48,borderRadius:'50%',background:'#1DB954',
-                              display:'flex',alignItems:'center',justifyContent:'center',
-                              fontSize:20,color:'#000',boxShadow:'0 4px 16px rgba(0,0,0,0.5)'}}>▶</div>
+                          <div className="album-play-overlay" style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center',opacity:0,transition:'opacity 0.2s'}}>
+                            <div style={{width:48,height:48,borderRadius:'50%',background:'#1DB954',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,color:'#000',boxShadow:'0 4px 16px rgba(0,0,0,0.5)'}}>▶</div>
                           </div>
-                          <div style={{position:'absolute',top:8,left:8,background:'rgba(0,0,0,0.72)',
-                            fontFamily:'var(--font-mono)',fontSize:'0.58rem',color:'#fff',
-                            padding:'2px 6px',borderRadius:3,textTransform:'uppercase',letterSpacing:'0.06em'}}>
-                            {albumTypeLabel(album.album_type)}
-                          </div>
+                          <div style={{position:'absolute',top:8,left:8,background:'rgba(0,0,0,0.72)',fontFamily:'var(--font-mono)',fontSize:'0.58rem',color:'#fff',padding:'2px 6px',borderRadius:3,textTransform:'uppercase',letterSpacing:'0.06em'}}>{albumTypeLabel(album.album_type)}</div>
                         </div>
                         <div style={{padding:'10px 12px'}}>
-                          <div style={{fontFamily:'var(--font-display)',fontSize:13,textTransform:'uppercase',
-                            lineHeight:1.2,marginBottom:4,color:'var(--off-white)',
-                            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                            {album.name}
-                          </div>
-                          <div className="mono" style={{fontSize:'0.65rem',color:'var(--muted)'}}>
-                            {album.release_date?.slice(0,4)}
-                            {album.total_tracks ? ` · ${album.total_tracks} FAIXAS` : ''}
-                          </div>
+                          <div style={{fontFamily:'var(--font-display)',fontSize:13,textTransform:'uppercase',lineHeight:1.2,marginBottom:4,color:'var(--off-white)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{album.name}</div>
+                          <div className="mono" style={{fontSize:'0.65rem',color:'var(--muted)'}}>{album.release_date?.slice(0,4)}{album.total_tracks ? ` · ${album.total_tracks} FAIXAS` : ''}</div>
                         </div>
                       </div>
                     ))}
@@ -291,52 +222,30 @@ export default function MusicaPage() {
                 </>
               )}
 
-              {/* TOP TRACKS */}
               {artistTracks.length > 0 && (
                 <>
                   <div className="kicker" style={{marginBottom:12}}>// TOP FAIXAS</div>
                   <div style={{display:'flex',flexDirection:'column',gap:3,marginBottom:16}}>
                     {artistTracks.map((track, ti) => (
-                      <div key={track.id} className="track-row"
-                        onClick={() => openModal('track', track.id, track.name,
-                          track.artists?.map(a => a.name).join(', '),
-                          track.external_urls?.spotify)}>
+                      <div key={track.id} className="track-row" onClick={() => openModal('track', track.id, track.name, track.artists?.map(a => a.name).join(', '), track.external_urls?.spotify)}>
                         <div style={{position:'relative',width:24,flexShrink:0}}>
                           <div className="track-num">{ti + 1}</div>
                           <div className="track-play-icon">▶</div>
                         </div>
-                        {track.album?.images?.[0]?.url && (
-                          <img src={track.album.images[0].url} alt=""
-                            style={{width:44,height:44,objectFit:'cover',flexShrink:0,borderRadius:2}} />
-                        )}
+                        {track.album?.images?.[0]?.url && <img src={track.album.images[0].url} alt="" style={{width:44,height:44,objectFit:'cover',flexShrink:0,borderRadius:2}} />}
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontFamily:'var(--font-display)',fontSize:14,textTransform:'uppercase',
-                            color:'var(--off-white)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                            {track.name}
-                          </div>
-                          <div className="mono" style={{fontSize:'0.7rem',color:'var(--muted)',marginTop:2}}>
-                            {track.album?.name}
-                          </div>
+                          <div style={{fontFamily:'var(--font-display)',fontSize:14,textTransform:'uppercase',color:'var(--off-white)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{track.name}</div>
+                          <div className="mono" style={{fontSize:'0.7rem',color:'var(--muted)',marginTop:2}}>{track.album?.name}</div>
                         </div>
                         {track.popularity !== undefined && (
                           <div style={{flexShrink:0,display:'flex',alignItems:'center'}}>
                             <div style={{width:40,height:3,background:'var(--gray)',borderRadius:2,overflow:'hidden'}}>
-                              <div style={{width:`${track.popularity}%`,height:'100%',
-                                background:'#1DB954',borderRadius:2,transition:'width 0.3s'}} />
+                              <div style={{width:`${track.popularity}%`,height:'100%',background:'#1DB954',borderRadius:2,transition:'width 0.3s'}} />
                             </div>
                           </div>
                         )}
-                        <div className="mono" style={{fontSize:'0.75rem',color:'var(--muted)',flexShrink:0,marginLeft:8}}>
-                          {fmtMs(track.duration_ms)}
-                        </div>
-                        <a href={track.external_urls?.spotify} target="_blank" rel="noopener noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          style={{color:'#1DB954',fontSize:14,flexShrink:0,textDecoration:'none',
-                            opacity:0.5,transition:'opacity 0.2s',marginLeft:6}}
-                          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                          onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}>
-                          ↗
-                        </a>
+                        <div className="mono" style={{fontSize:'0.75rem',color:'var(--muted)',flexShrink:0,marginLeft:8}}>{fmtMs(track.duration_ms)}</div>
+                        <a href={track.external_urls?.spotify} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{color:'#1DB954',fontSize:14,flexShrink:0,textDecoration:'none',opacity:0.5,transition:'opacity 0.2s',marginLeft:6}} onMouseEnter={e => e.currentTarget.style.opacity='1'} onMouseLeave={e => e.currentTarget.style.opacity='0.5'}>↗</a>
                       </div>
                     ))}
                   </div>
@@ -346,9 +255,9 @@ export default function MusicaPage() {
           </section>
         );
       })}
+      </EditableSection>
 
       <SpotifyModal modal={modal} onClose={() => setModal(null)} />
-      </EditableSection>
     </div>
   );
 }

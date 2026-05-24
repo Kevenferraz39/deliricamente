@@ -2,6 +2,7 @@ import React from 'react';
 import { Btn, Icon } from '../components';
 import { useEditMode } from '../context/EditModeContext';
 import { EditableSection } from '../components/editor/EditableSection';
+import { EditableText } from '../components/editor/EditableText';
 
 const PAGE = 'contato';
 
@@ -15,12 +16,16 @@ export default function ContatoPage() {
 
   return (
     <div className="page-enter">
-      <EditableSection pageId={PAGE} sectionId="form" label="Contato">
+      <EditableSection pageId={PAGE} sectionId="form" label="Formulário de Contato">
       <section className="section tight" style={{paddingTop:112}}>
         <div className="wrap">
-          <div className="kicker">// Fala com o coletivo</div>
+          <div className="kicker">
+            <EditableText pageId={PAGE} contentKey="header.kicker" defaultValue="// Fala com o coletivo" tag="span" />
+          </div>
           <h1 className="display" style={{fontSize:"clamp(56px,9vw,130px)",lineHeight:0.85,margin:"12px 0 32px",textTransform:"uppercase"}}>
-            CON<span style={{color:"var(--red)"}}>TATO</span>
+            <EditableText pageId={PAGE} contentKey="header.title1" defaultValue="CON" tag="span" styleKey="header.title1" />
+            <EditableText pageId={PAGE} contentKey="header.title2" defaultValue="TATO" tag="span"
+              style={{color:"var(--red)"}} styleKey="header.title2" />
           </h1>
           <div className="contato-grid">
             <div>
@@ -54,24 +59,26 @@ export default function ContatoPage() {
             </div>
 
             <div className="contato-info">
-              <h3>// REDES</h3>
+              <EditableText pageId={PAGE} contentKey="info.redes.title" defaultValue="// REDES" tag="h3" />
               <p>
-                <b>Instagram</b> · <a>@deliricamente_</a><br/>
-                <b>YouTube</b> · <a>Deliricamente Oficial</a><br/>
-                <b>Spotify</b> · <a>Selo AGC</a>
+                <b>Instagram</b> · <EditableText pageId={PAGE} contentKey="info.instagram" defaultValue="@deliricamente_" tag="a" />
+                <br/>
+                <b>YouTube</b> · <EditableText pageId={PAGE} contentKey="info.youtube" defaultValue="Deliricamente Oficial" tag="a" />
+                <br/>
+                <b>Spotify</b> · <EditableText pageId={PAGE} contentKey="info.spotify" defaultValue="Selo AGC" tag="a" />
               </p>
 
-              <h3>// BOOKING & PARCERIAS</h3>
+              <EditableText pageId={PAGE} contentKey="info.booking.title" defaultValue="// BOOKING & PARCERIAS" tag="h3" />
               <p>
-                <a>booking@deliricamente.com.br</a><br/>
-                <a>contato@agc.coletivo</a>
+                <EditableText pageId={PAGE} contentKey="info.booking.email1" defaultValue="booking@deliricamente.com.br" tag="a" />
+                <br/>
+                <EditableText pageId={PAGE} contentKey="info.booking.email2" defaultValue="contato@agc.coletivo" tag="a" />
               </p>
 
-              <h3>// BASE</h3>
-              <p>
-                Caieiras · Grande São Paulo<br/>
-                Atende a região metropolitana e shows fora pra todo Brasil.
-              </p>
+              <EditableText pageId={PAGE} contentKey="info.base.title" defaultValue="// BASE" tag="h3" />
+              <EditableText pageId={PAGE} contentKey="info.base.body"
+                defaultValue="Caieiras · Grande São Paulo. Atende a região metropolitana e shows fora pra todo Brasil."
+                tag="p" multiline />
 
               <h3>// SIGA</h3>
               <div className="socials">

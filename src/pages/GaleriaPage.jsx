@@ -5,6 +5,7 @@ import { Placeholder } from '../components';
 import { GALLERY } from '../data';
 import { useEditMode } from '../context/EditModeContext';
 import { EditableSection } from '../components/editor/EditableSection';
+import { EditableText } from '../components/editor/EditableText';
 
 const PAGE = 'galeria';
 
@@ -25,14 +26,24 @@ export default function GaleriaPage() {
 
   return (
     <div className="page-enter">
-      <EditableSection pageId={PAGE} sectionId="header" label="Cabeçalho + Galeria">
+      <EditableSection pageId={PAGE} sectionId="header" label="Cabeçalho">
       <section className="section tight" style={{paddingTop:112}}>
         <div className="wrap">
-          <div className="kicker">// Memória do coletivo</div>
+          <div className="kicker">
+            <EditableText pageId={PAGE} contentKey="header.kicker" defaultValue="// Memória do coletivo" tag="span" />
+          </div>
           <h1 className="display" style={{fontSize:"clamp(56px,9vw,130px)",lineHeight:0.85,margin:"12px 0 32px",textTransform:"uppercase"}}>
-            GALE<span style={{color:"var(--red)"}}>RIA</span>
+            <EditableText pageId={PAGE} contentKey="header.title1" defaultValue="GALE" tag="span" styleKey="header.title1" />
+            <EditableText pageId={PAGE} contentKey="header.title2" defaultValue="RIA" tag="span"
+              style={{color:"var(--red)"}} styleKey="header.title2" />
           </h1>
+        </div>
+      </section>
+      </EditableSection>
 
+      <EditableSection pageId={PAGE} sectionId="grid" label="Grade de Fotos">
+      <section className="section tight" style={{paddingTop:0}}>
+        <div className="wrap">
           <div className="gallery-grid">
             {gallery.map((g, i) => (
               <div key={g.id || i} className={"gallery-item " + (g.size || '')} onClick={() => setOpen(g)}>
@@ -48,6 +59,7 @@ export default function GaleriaPage() {
           </div>
         </div>
       </section>
+      </EditableSection>
 
       {open && (
         <div className="lightbox" onClick={() => setOpen(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.92)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -61,7 +73,6 @@ export default function GaleriaPage() {
           </div>
         </div>
       )}
-      </EditableSection>
     </div>
   );
 }
