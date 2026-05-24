@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEditMode } from '../../context/EditModeContext';
+import { LinkPicker } from './LinkPicker';
 
 const VARIANTS = ['red', 'ghost', 'outline', 'white'];
 
@@ -102,12 +103,7 @@ export function EditableButton({
           />
 
           <div className="style-panel-label" style={{marginTop:10}}>LINK</div>
-          <input
-            className="edit-field-input"
-            value={link}
-            onChange={e => set('link', e.target.value)}
-            placeholder="/pagina ou https://..."
-          />
+          <LinkPicker value={link} onChange={v => set('link', v)} />
 
           <div className="style-panel-label" style={{marginTop:10}}>VARIANTE</div>
           <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>

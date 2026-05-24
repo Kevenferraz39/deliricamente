@@ -1,5 +1,6 @@
 import React from 'react';
 import { useEditMode } from '../../context/EditModeContext';
+import { LinkPicker } from './LinkPicker';
 
 // ── Upload imgbb (reutilizado do projeto) ──────────────────────────────
 const uploadImg = async (file) => {
@@ -150,7 +151,7 @@ function EditBlock({ block, onChange }) {
             >{block.text}</div>
           </div>
           <div className="bz-field-row"><label>Link</label>
-            <input className="bz-input" value={block.link||''} onChange={e => set('link', e.target.value)} placeholder="/pagina ou https://..." />
+            <LinkPicker value={block.link || ''} onChange={v => set('link', v)} />
           </div>
           <div className="bz-field-row">
             <label>Variante</label>
@@ -180,7 +181,7 @@ function EditBlock({ block, onChange }) {
                 onBlur={e => updBtn(b.id, 'text', e.target.innerText.trim())}
                 onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), e.target.blur())}
               >{b.text}</div>
-              <input className="bz-input" value={b.link||''} onChange={e => updBtn(b.id,'link',e.target.value)} placeholder="link" style={{flex:1}} />
+              <div style={{flex:1}}><LinkPicker value={b.link||''} onChange={v => updBtn(b.id,'link',v)} /></div>
               <div className="bz-chips">
                 {['red','ghost'].map(v => <button key={v} className={'bz-chip'+(b.variant===v?' active':'')} onClick={()=>updBtn(b.id,'variant',v)}>{v}</button>)}
               </div>

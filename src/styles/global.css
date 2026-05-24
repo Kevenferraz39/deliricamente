@@ -1344,3 +1344,54 @@ span:hover > .editable-btn-trigger { opacity: 1; }
   .bz-block-body { grid-template-columns: 1fr; }
   .bz-preview { border-right: none; border-bottom: 1px solid var(--line); }
 }
+
+/* ── LinkPicker ────────────────────────────────────────── */
+.lp-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 9998;
+  background: rgba(10,10,10,0.98); border: 1px solid var(--red);
+  padding: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+  max-height: 320px; overflow-y: auto;
+}
+.lp-group-label {
+  font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;
+}
+.lp-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.lp-chip {
+  background: var(--panel); border: 1px solid var(--line);
+  color: var(--off-white); font-family: var(--font-mono); font-size: 0.65rem;
+  padding: 4px 10px; cursor: pointer; border-radius: 3px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.lp-chip:hover { border-color: var(--red); background: rgba(225,6,0,0.1); }
+.lp-chip.active { border-color: var(--red); color: var(--red); background: rgba(225,6,0,0.1); }
+.lp-chip-custom { border-style: dashed; }
+.lp-ext-hint {
+  font-family: var(--font-mono); font-size: 0.7rem; padding: 4px 0;
+}
+
+/* ── NewPageModal ───────────────────────────────────────── */
+.np-backdrop {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.np-modal {
+  background: var(--black); border: 1px solid var(--line);
+  width: 100%; max-width: 480px; padding: 28px;
+}
+.np-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+/* ── FAB group ─────────────────────────────────────────── */
+.edit-fab-group {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9990;
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+}
+.edit-fab-new-page {
+  background: #16a34a !important;
+  box-shadow: 0 4px 20px rgba(22,163,74,0.4) !important;
+}
+.edit-fab-new-page:hover { box-shadow: 0 6px 28px rgba(22,163,74,0.55) !important; }

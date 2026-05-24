@@ -31,6 +31,7 @@ import EventoPage from './pages/EventoPage';
 import UserProfilePage from './pages/UserProfilePage';
 import ErrorPage from './pages/ErrorPage';
 import Footer from './components/Footer';
+import CustomPage from './pages/CustomPage';
 
 // Lista de termos ofensivos para auto-moderacao de comentarios
 const OFFENSIVE_TERMS = [
@@ -541,6 +542,9 @@ function App() {
           <Route path="/agenda/:id" element={<EventoPage />} />
           <Route path="/perfil" element={<UserProfilePage />} />
           <Route path="/error/:code" element={<ErrorPage />} />
+          <Route path="/404" element={<NotFoundPage />} />
+          {/* Páginas personalizadas — deve ficar antes do catch-all */}
+          <Route path="/:slug" element={<CustomPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
         <FooterWrapper />
