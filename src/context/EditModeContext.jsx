@@ -66,10 +66,25 @@ export function EditModeProvider({ children }) {
     if (configs[pageId] !== undefined) return;
     try {
       const snap = await getDoc(doc(db, 'pages', pageId));
-      setConfigs(prev => ({
-        ...prev,
-        [pageId]: snap.exists() ? snap.data() : emptyPage(pageId),
-      }));
+      let data = snap.exists() ? snap.data() : emptyPage(pageId);
+
+      // Garante que seções nativas (definidas no código) nunca somem do array
+      // mesmo que o doc do Firestore tenha sido salvo sem elas
+      const defaults = PAGE_DEFAULT_SECTIONS[pageId] || [];
+      const savedIds = new Set((data.sections || []).map(s => s.id));
+      const missing = defaults.filter(d => !savedIds.has(d.id));
+      if (missing.length) {
+        const maxOrder = (data.sections || []).reduce((m, s) => Math.max(m, s.order ?? 0), -1);
+        data = {
+          ...data,
+          sections: [
+            ...(data.sections || []),
+            ...missing.map((s, i) => ({ ...s, order: maxOrder + 1 + i })),
+          ],
+        };
+      }
+
+      setConfigs(prev => ({ ...prev, [pageId]: data }));
     } catch {
       setConfigs(prev => ({ ...prev, [pageId]: emptyPage(pageId) }));
     }
@@ -135,9 +150,28 @@ export function EditModeProvider({ children }) {
   }, []);
 
   const toggleSectionVisibility = React.useCallback((pageId, sectionId) => {
-    const sections = getConfig(pageId).sections.map(s =>
-      s.id === sectionId ? { ...s, visible: !s.visible } : s
-    );
+    const current = getConfig(pageId).sections;
+    const exists = current.find(s => s.id === sectionId);
+
+    let sections;
+    if (exists) {
+      // Seção está no array — só alterna visible
+      sections = current.map(s =>
+        s.id === sectionId ? { ...s, visible: !s.visible } : s
+      );
+    } else {
+      // Seção foi deletada do array — restaura a partir dos defaults com visible: true
+      const defaults = PAGE_DEFAULT_SECTIONS[pageId] || [];
+      const def = defaults.find(s => s.id === sectionId);
+      const maxOrder = current.reduce((m, s) => Math.max(m, s.order), -1);
+      sections = [...current, {
+        id: sectionId,
+        label: def?.label || sectionId,
+        visible: true,
+        order: def?.order ?? maxOrder + 1,
+      }];
+    }
+
     _patchPending(pageId, { sections });
   }, [getConfig]);
 
