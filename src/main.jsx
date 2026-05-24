@@ -66,6 +66,21 @@ function loadGoogleFont(name) {
 function Nav() {
   const { user, navLogoUrl } = React.useContext(AppContext);
   const location = useLocation();
+  const [customNavPages, setCustomNavPages] = React.useState([]);
+
+  React.useEffect(() => {
+    const unsub = onSnapshot(
+      query(collection(db, 'custom_pages')),
+      snap => {
+        const pages = snap.docs
+          .map(d => ({ slug: d.id, ...d.data() }))
+          .filter(p => p.navVisible)
+          .sort((a, b) => (a.navOrder || 99) - (b.navOrder || 99));
+        setCustomNavPages(pages);
+      }
+    );
+    return () => unsub();
+  }, []);
 
   if (location.pathname.startsWith('/admin')) return null;
 
@@ -97,6 +112,11 @@ function Nav() {
           <Link className={'nav-link ' + (isActive('/musica') ? 'active' : '')} to="/musica">Música</Link>
           <Link className={'nav-link ' + (isActive('/loja') ? 'active' : '')} to="/loja">Loja</Link>
           <Link className={'nav-link ' + (isActive('/contato') ? 'active' : '')} to="/contato">Contato</Link>
+          {customNavPages.map(p => (
+            <Link key={p.slug} className={'nav-link ' + (isActive('/'+p.slug) ? 'active' : '')} to={'/'+p.slug}>
+              {p.navLabel || p.title}
+            </Link>
+          ))}
           {isAdmin(user)
             ? <Link className="nav-cta" to="/admin/dashboard">Admin</Link>
             : <Link to={user ? '/perfil' : '/admin'} className="nav-user-btn" title={user ? user.name : 'Entrar'}>

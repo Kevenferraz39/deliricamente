@@ -1458,3 +1458,13 @@ span:hover > .editable-btn-trigger { opacity: 1; }
 .speed-dial-icon-close { opacity: 0; transform: rotate(-45deg); }
 .speed-dial-main.open .speed-dial-icon-plus  { opacity: 0; transform: rotate(45deg); }
 .speed-dial-main.open .speed-dial-icon-close { opacity: 1; transform: rotate(0deg); }
+
+/* ── CardEditor (dentro de EditBlock card-grid) ─────────── */
+.card-editor-item { border: 1px solid var(--line); margin-bottom: 6px; }
+.card-editor-bar {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  cursor: pointer; background: rgba(255,255,255,0.02);
+  user-select: none;
+}
+.card-editor-bar:hover { background: rgba(255,255,255,0.04); }
+.card-editor-body { padding: 12px 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }

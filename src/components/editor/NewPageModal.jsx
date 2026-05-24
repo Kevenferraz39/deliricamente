@@ -23,6 +23,9 @@ export function NewPageModal({ onClose }) {
   const [title, setTitle] = React.useState('');
   const [slug, setSlug] = React.useState('');
   const [slugEdited, setSlugEdited] = React.useState(false);
+  const [pageType, setPageType] = React.useState('sub'); // 'sub' | 'main'
+  const [navLabel, setNavLabel] = React.useState('');
+  const [navOrder, setNavOrder] = React.useState(99);
   const [creating, setCreating] = React.useState(false);
   const [error, setError] = React.useState('');
 
@@ -55,7 +58,9 @@ export function NewPageModal({ onClose }) {
         title: title.trim(),
         slug,
         createdAt: serverTimestamp(),
-        navVisible: false,
+        navVisible: pageType === 'main',
+        navLabel: (navLabel || title).trim(),
+        navOrder: Number(navOrder) || 99,
       });
 
       onClose();
@@ -116,6 +121,59 @@ export function NewPageModal({ onClose }) {
             <div className="mono" style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: 4 }}>
               Apenas letras minúsculas, números e hífens. Gerado automaticamente pelo título.
             </div>
+          </div>
+
+          {/* Tipo de página */}
+          <div>
+            <label className="mono" style={{ fontSize: '0.65rem', color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
+              Tipo de página
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {[
+                { val: 'sub',  icon: '↘', title: 'Subpágina', desc: 'Acessível só via botões e links. Não aparece no menu.' },
+                { val: 'main', icon: '☰', title: 'Página principal', desc: 'Aparece no menu de navegação do site.' },
+              ].map(opt => (
+                <button
+                  key={opt.val}
+                  onClick={() => setPageType(opt.val)}
+                  style={{
+                    background: pageType===opt.val ? 'rgba(225,6,0,0.08)' : 'var(--panel)',
+                    border: pageType===opt.val ? '1px solid var(--red)' : '1px solid var(--line)',
+                    padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
+                    display: 'flex', flexDirection: 'column', gap: 4,
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                >
+                  <span style={{ fontSize: '1.2rem', color: pageType===opt.val ? 'var(--red)' : 'var(--muted)' }}>{opt.icon}</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--off-white)' }}>{opt.title}</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.72rem', color: 'var(--muted)', lineHeight: 1.3 }}>{opt.desc}</span>
+                </button>
+              ))}
+            </div>
+
+            {pageType === 'main' && (
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="mono" style={{ fontSize: '0.6rem', color: 'var(--muted)', textTransform: 'uppercase' }}>
+                  Label no menu (vazio = usa o título)
+                </label>
+                <input
+                  className="bz-input"
+                  value={navLabel}
+                  onChange={e => setNavLabel(e.target.value)}
+                  placeholder={title || 'Label no nav'}
+                />
+                <label className="mono" style={{ fontSize: '0.6rem', color: 'var(--muted)', textTransform: 'uppercase', marginTop: 4 }}>
+                  Ordem no menu (menor = mais à esquerda)
+                </label>
+                <input
+                  className="bz-input"
+                  type="number" min={1} max={99}
+                  value={navOrder}
+                  onChange={e => setNavOrder(e.target.value)}
+                  style={{ width: 80 }}
+                />
+              </div>
+            )}
           </div>
 
           {error && (
