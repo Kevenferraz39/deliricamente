@@ -1395,3 +1395,66 @@ span:hover > .editable-btn-trigger { opacity: 1; }
   box-shadow: 0 4px 20px rgba(22,163,74,0.4) !important;
 }
 .edit-fab-new-page:hover { box-shadow: 0 6px 28px rgba(22,163,74,0.55) !important; }
+
+/* ── Speed Dial FAB ─────────────────────────────────────── */
+.speed-dial {
+  position: fixed; bottom: 28px; right: 28px; z-index: 9990;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 0;
+}
+
+/* Itens expansíveis */
+.speed-dial-items {
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: 12px; margin-bottom: 14px;
+  pointer-events: none;
+}
+.speed-dial-items.open { pointer-events: auto; }
+
+.speed-dial-item {
+  display: flex; align-items: center; gap: 10px;
+  opacity: 0; transform: translateY(12px) scale(0.9);
+  transition: opacity 0.2s var(--delay,0ms), transform 0.2s var(--delay,0ms);
+}
+.speed-dial-items.open .speed-dial-item {
+  opacity: 1; transform: translateY(0) scale(1);
+}
+
+/* Label tooltip */
+.speed-dial-label {
+  background: rgba(10,10,10,0.92); color: var(--off-white);
+  font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 5px 12px; border-radius: 4px; white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+
+/* Botão circular de cada ação */
+.speed-dial-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: none; cursor: pointer; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: transform 0.15s, box-shadow 0.15s;
+}
+.speed-dial-btn:hover { transform: scale(1.1); }
+
+/* Botão principal */
+.speed-dial-main {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--red); border: none; cursor: pointer; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(225,6,0,0.45);
+  transition: transform 0.25s, box-shadow 0.2s, background 0.2s;
+  position: relative;
+}
+.speed-dial-main:hover { transform: scale(1.06); box-shadow: 0 6px 28px rgba(225,6,0,0.6); }
+.speed-dial-main.open { background: #333; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+
+/* Troca de ícone + → × com animação */
+.speed-dial-main-icon {
+  position: absolute; transition: opacity 0.2s, transform 0.25s;
+}
+.speed-dial-icon-plus  { opacity: 1; transform: rotate(0deg); }
+.speed-dial-icon-close { opacity: 0; transform: rotate(-45deg); }
+.speed-dial-main.open .speed-dial-icon-plus  { opacity: 0; transform: rotate(45deg); }
+.speed-dial-main.open .speed-dial-icon-close { opacity: 1; transform: rotate(0deg); }

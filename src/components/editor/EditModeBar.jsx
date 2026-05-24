@@ -16,6 +16,85 @@ const PAGE_LABELS = {
 
 const isAdminUser = (u) => u && (u.isMaster || u.role === 'admin' || u.role === 'admin_master');
 
+// ── Speed Dial FAB ──────────────────────────────────────────────────────
+function SpeedDial({ onEdit, onNewPage, newPageOpen, setNewPageOpen }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const fn = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, [open]);
+
+  const ACTIONS = [
+    {
+      label: 'Editar site',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      ),
+      color: 'var(--red)',
+      action: () => { setOpen(false); onEdit(); },
+    },
+    {
+      label: 'Nova página',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <path d="M14 2v6h6M12 18v-6M9 15h6"/>
+        </svg>
+      ),
+      color: '#16a34a',
+      action: () => { setOpen(false); onNewPage(); },
+    },
+  ];
+
+  return (
+    <div ref={ref} className="speed-dial">
+      {/* Itens expandidos — aparecem de baixo para cima */}
+      <div className={'speed-dial-items' + (open ? ' open' : '')}>
+        {ACTIONS.map((a, i) => (
+          <div
+            key={a.label}
+            className="speed-dial-item"
+            style={{ '--delay': `${i * 40}ms` }}
+          >
+            <span className="speed-dial-label">{a.label}</span>
+            <button
+              className="speed-dial-btn"
+              style={{ background: a.color, boxShadow: `0 4px 14px ${a.color}55` }}
+              onClick={a.action}
+              title={a.label}
+            >
+              {a.icon}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Botão principal */}
+      <button
+        className={'speed-dial-main' + (open ? ' open' : '')}
+        onClick={() => setOpen(o => !o)}
+        title="Ferramentas de edição"
+      >
+        <svg className="speed-dial-main-icon speed-dial-icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="22" height="22">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        <svg className="speed-dial-main-icon speed-dial-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+
+      {newPageOpen && <NewPageModal onClose={() => setNewPageOpen(false)} />}
+    </div>
+  );
+}
+
 export function EditModeBar() {
   const { user } = useApp();
   const { editMode, toggleEditMode, saveAll, discardAll, dirty, saving, setAddSectionTarget } = useEditMode();
@@ -32,24 +111,12 @@ export function EditModeBar() {
 
   if (!editMode) {
     return (
-      <div className="edit-fab-group">
-        <button className="edit-fab" onClick={toggleEditMode} title="Ativar modo de edição">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
-          <span>Editar site</span>
-        </button>
-        <button
-          className="edit-fab edit-fab-new-page"
-          onClick={() => setNewPageOpen(true)}
-          title="Criar nova página"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/></svg>
-          <span>Nova página</span>
-        </button>
-        {newPageOpen && <NewPageModal onClose={() => setNewPageOpen(false)} />}
-      </div>
+      <SpeedDial
+        onEdit={toggleEditMode}
+        onNewPage={() => setNewPageOpen(true)}
+        newPageOpen={newPageOpen}
+        setNewPageOpen={setNewPageOpen}
+      />
     );
   }
 
