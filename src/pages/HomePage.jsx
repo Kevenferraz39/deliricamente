@@ -314,32 +314,13 @@ export default function HomePage() {
     ),
   };
 
-  if (!editMode) {
-    // Modo de leitura: respeita visibilidade salva mas renderiza na ordem do Firestore
-    const sections = getSections(PAGE);
-    return (
-      <div className="page-enter">
-        {sections.map(s => {
-          if (!s.visible) return null;
-          if (s.id === 'hero') return <React.Fragment key="hero"><Hero bgConfig={bgConfig} heroLogoUrl={heroLogoUrl} /></React.Fragment>;
-          if (s.id === 'latest-posts') return published.length >= 4 ? <LatestPosts key="lp" posts={published.slice(0, 4)} /> : null;
-          if (s.id === 'agc') return <AGCSection key="agc" />;
-          if (s.id === 'agenda') return <AgendaSection key="agenda" />;
-          if (s.type) return <DynamicBlock key={s.id} pageId={PAGE} section={s} />;
-          return null;
-        })}
-        {showCarousel && (
-          <HeroCarousel slides={carouselConfig.slides} autoPlay={carouselConfig.autoPlay !== false} interval={carouselConfig.interval || 5} />
-        )}
-      </div>
-    );
-  }
-
-  // Modo de edição: envolve cada seção com controles
+  // Render único para ambos os modos — EditableSection é transparente em view mode
+  // mas inclui o BlockZone, garantindo que blocos livres apareçam sempre
   const sections = getSections(PAGE);
   return (
     <div className="page-enter">
       {sections.map(s => {
+        if (!s.visible && !editMode) return null;
         if (s.type) return (
           <EditableSection key={s.id} pageId={PAGE} sectionId={s.id} label={s.label}>
             <DynamicBlock pageId={PAGE} section={s} />
