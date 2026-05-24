@@ -1,5 +1,6 @@
 import React from 'react';
 import { useEditMode } from '../../context/EditModeContext';
+import { BlockZone } from './BlockZone';
 
 export function EditableSection({ pageId, sectionId, label, children }) {
   const {
@@ -13,9 +14,18 @@ export function EditableSection({ pageId, sectionId, label, children }) {
   } = useEditMode();
 
   const visible = isSectionVisible(pageId, sectionId);
+  const zoneKey = `${pageId}_${sectionId}`;
 
+  // Modo leitura: renderiza filhos + quaisquer blocos livres salvos
   if (!editMode && !visible) return null;
-  if (!editMode) return <>{children}</>;
+  if (!editMode) {
+    return (
+      <>
+        {children}
+        <BlockZone pageId={pageId} zoneKey={zoneKey} className="wrap" style={{ padding: '0 0 32px' }} />
+      </>
+    );
+  }
 
   const handleDelete = () => {
     if (window.confirm(`Remover seção "${label}"? Esta ação pode ser desfeita descartando as alterações.`)) {
@@ -64,6 +74,11 @@ export function EditableSection({ pageId, sectionId, label, children }) {
       {!visible && <div className="edit-section-overlay"><span>SEÇÃO OCULTA</span></div>}
       <div className={!visible ? 'edit-section-preview' : ''}>
         {children}
+
+        {/* BlockZone — área livre para adicionar elementos à vontade */}
+        <div className="wrap">
+          <BlockZone pageId={pageId} zoneKey={zoneKey} />
+        </div>
       </div>
     </div>
   );
