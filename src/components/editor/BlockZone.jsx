@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { useEditMode } from '../../context/EditModeContext';
 import { LinkPicker } from './LinkPicker';
 
@@ -671,8 +672,8 @@ export function BlockZone({ pageId, zoneKey, className='', style={} }) {
         );
       })}
 
-      {/* Overlay de edição full-screen quando um bloco está expandido */}
-      {expandedBlock && (
+      {/* Overlay — renderizado via portal no body para escapar de z-index de containers pai */}
+      {expandedBlock && ReactDOM.createPortal(
         <>
           <div className="bz-overlay-backdrop" onClick={() => setExpandedId(null)} />
           <div className="bz-overlay-panel">
@@ -708,7 +709,8 @@ export function BlockZone({ pageId, zoneKey, className='', style={} }) {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
 
       <div className="bz-add-row">
