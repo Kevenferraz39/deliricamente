@@ -6,6 +6,8 @@ import { LogoMark, Placeholder, Marquee, Btn, AnimatedBackground, HeroCarousel }
 import { EditableSection } from '../components/editor/EditableSection';
 import { EditableText } from '../components/editor/EditableText';
 import { EditableImage } from '../components/editor/EditableImage';
+import { EditableButton } from '../components/editor/EditableButton';
+import { EditableCardGrid } from '../components/editor/EditableCardGrid';
 import { DynamicBlock } from '../components/editor/DynamicBlock';
 import { AGENDA, COLLECTIVES } from '../data';
 import { db } from '../firebase.js';
@@ -64,15 +66,12 @@ function Hero({ bgConfig = {}, heroLogoUrl = "" }) {
             </div>
 
             <div className="hero-actions">
-              <Btn variant="red" arrow onClick={() => navigate("/blog")}>
-                <EditableText pageId={PAGE} contentKey="hero.cta1" defaultValue="Últimos posts" tag="span" />
-              </Btn>
-              <Btn variant="ghost" arrow onClick={() => navigate("/historia")}>
-                <EditableText pageId={PAGE} contentKey="hero.cta2" defaultValue="Nossa história" tag="span" />
-              </Btn>
-              <Btn variant="ghost" onClick={() => navigate("/contato")}>
-                <EditableText pageId={PAGE} contentKey="hero.cta3" defaultValue="Booking · Contato" tag="span" />
-              </Btn>
+              <EditableButton pageId={PAGE} contentKey="hero.btn1"
+                defaultText="Últimos posts" defaultLink="/blog" defaultVariant="red" arrow />
+              <EditableButton pageId={PAGE} contentKey="hero.btn2"
+                defaultText="Nossa história" defaultLink="/historia" defaultVariant="ghost" arrow />
+              <EditableButton pageId={PAGE} contentKey="hero.btn3"
+                defaultText="Booking · Contato" defaultLink="/contato" defaultVariant="ghost" />
             </div>
           </div>
 
@@ -165,8 +164,14 @@ function LatestPosts({ posts }) {
 // ============================================================
 // AGC SECTION
 // ============================================================
+const COLLECTIVES_SCHEMA = [
+  { key: 'num',  tag: 'div', className: 'num',  style: {} },
+  { key: 'role', tag: 'div', className: 'role', style: {} },
+  { key: 'name', tag: 'h3',  style: {} },
+  { key: 'body', tag: 'p',   type: 'multiline', style: {} },
+];
+
 function AGCSection() {
-  const navigate = useNavigate();
   return (
     <section className="section agc-section">
       <div className="wrap">
@@ -187,21 +192,35 @@ function AGCSection() {
             <EditableText pageId={PAGE} contentKey="agc.body2"
               defaultValue="Não é selo, não é produtora, não é ONG. É movimento. Atitude e revolução dentro e fora do som. A quebrada cuidando da quebrada, sem pedir licença pra ninguém."
               tag="p" styleKey="agc.body2" multiline style={{ marginTop: 16 }} />
+
+            {/* Botões editáveis — screenshot 3 */}
             <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginTop:24 }}>
-              <Btn variant="red" arrow onClick={() => navigate("/historia")}>Conhecer a história</Btn>
+              <EditableButton pageId={PAGE} contentKey="agc.btn1"
+                defaultText="Conhecer a história" defaultLink="/historia"
+                defaultVariant="red" arrow />
+              <EditableButton pageId={PAGE} contentKey="agc.btn2"
+                defaultText="Nossa Música" defaultLink="/musica"
+                defaultVariant="ghost" />
             </div>
           </div>
         </div>
-        <div className="collectives">
-          {COLLECTIVES.map((c, i) => (
-            <div className="collective" key={i}>
-              <div className="num">{c.num}/03</div>
-              <div className="role">{c.role}</div>
-              <h3>{c.name}</h3>
-              <p>{c.body}</p>
-            </div>
-          ))}
-        </div>
+
+        {/* Cards dos coletivos — editável */}
+        <EditableCardGrid
+          pageId={PAGE}
+          gridKey="agc.collectives"
+          defaultCards={COLLECTIVES.map((c, i) => ({
+            id: `col_${i}`,
+            num: `${c.num}/03`,
+            role: c.role,
+            name: c.name,
+            body: c.body,
+          }))}
+          schema={COLLECTIVES_SCHEMA}
+          columns={3}
+          cardClassName="collective"
+          gridStyle={{ marginTop: 40 }}
+        />
       </div>
     </section>
   );

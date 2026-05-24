@@ -1166,3 +1166,45 @@ body.edit-active { padding-bottom: 52px; }
 .edit-spinner { display: inline-block; animation: spin 0.8s linear infinite; font-size: 18px; }
 .edit-spinner-small { display: inline-block; animation: spin 0.8s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ── EditableCardGrid ──────────────────────────────────── */
+.edit-card-grid-root { position: relative; }
+.edit-card-wrapper { position: relative; display: flex; flex-direction: column; gap: 0; }
+.edit-card-bar {
+  display: flex; align-items: center; gap: 3px;
+  background: rgba(10,10,10,0.95); border: 1px solid var(--red);
+  border-bottom: none; padding: 4px 8px;
+}
+.edit-card-add {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: rgba(225,6,0,0.06); border: 2px dashed rgba(225,6,0,0.4);
+  color: var(--red); font-family: var(--font-mono); font-size: 0.72rem;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 20px; cursor: pointer; width: 100%; min-height: 80px;
+  transition: background 0.2s, border-color 0.2s;
+}
+.edit-card-add:hover { background: rgba(225,6,0,0.12); border-color: var(--red); }
+
+/* ── EditableButton ────────────────────────────────────── */
+.editable-btn-trigger {
+  position: absolute; top: -10px; right: -10px; z-index: 10;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--red); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  opacity: 0; transition: opacity 0.15s;
+}
+span:hover > .editable-btn-trigger { opacity: 1; }
+.editable-btn-popover {
+  position: absolute; top: calc(100% + 10px); left: 0; z-index: 9995;
+  width: 260px; background: rgba(10,10,10,0.98);
+  border: 1px solid var(--red); padding: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+.edit-field-input {
+  width: 100%; background: var(--black); border: 1px solid var(--line);
+  color: var(--off-white); font-family: var(--font-body); font-size: 0.85rem;
+  padding: 7px 10px; outline: none; box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.edit-field-input:focus { border-color: var(--red); }
