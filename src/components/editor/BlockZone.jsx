@@ -18,6 +18,7 @@ const uploadImg = async (file) => {
 const BLOCK_TYPES = [
   { type: 'heading',   icon: 'H',  label: 'Título',          desc: 'Cabeçalho em qualquer tamanho e cor' },
   { type: 'text',      icon: '¶',  label: 'Texto',           desc: 'Parágrafo de texto livre' },
+  { type: 'columns',   icon: '⫴',  label: 'Colunas',         desc: 'Coloque blocos lado a lado (2, 3 ou 4 colunas)' },
   { type: 'card-grid', icon: '⊞',  label: 'Cards',           desc: 'Grid de cards com blocos internos' },
   { type: 'button',    icon: '→',  label: 'Botão',           desc: 'Botão com texto e link' },
   { type: 'btn-row',   icon: '⇒',  label: 'Linha de Botões', desc: 'Vários botões lado a lado' },
@@ -27,13 +28,15 @@ const BLOCK_TYPES = [
   { type: 'kicker',    icon: '//', label: 'Kicker',          desc: 'Label pequeno estilo "// código"' },
 ];
 
-// Tipos disponíveis DENTRO de um card (sem card-grid para evitar recursão)
-const CARD_BLOCK_TYPES = BLOCK_TYPES.filter(t => t.type !== 'card-grid');
+// Dentro de um card ou coluna: sem card-grid nem columns (evita recursão)
+const CARD_BLOCK_TYPES = BLOCK_TYPES.filter(t => t.type !== 'card-grid' && t.type !== 'columns');
+const COL_BLOCK_TYPES  = BLOCK_TYPES.filter(t => t.type !== 'columns');
 
 const blockDefaults = (type) => {
   switch (type) {
     case 'heading':   return { text: 'Novo Título', level: 'h2', color: '', size: '' };
     case 'text':      return { text: 'Escreva aqui...', color: '', size: '' };
+    case 'columns':   return { numCols: 2, gap: 24, cols: [{ id:'col_a_'+Date.now(), blocks:[] }, { id:'col_b_'+Date.now(), blocks:[] }] };
     case 'card-grid': return { columns: 3, gap: 24, cards: [newCard(), newCard(), newCard()] };
     case 'button':    return { text: 'Clique aqui', link: '/', variant: 'red', arrow: true };
     case 'btn-row':   return { buttons: [{ id:'b1', text:'Botão 1', link:'/', variant:'red', arrow:true },{ id:'b2', text:'Botão 2', link:'/', variant:'ghost', arrow:false }] };
@@ -125,6 +128,16 @@ function ViewBlock({ block }) {
       return <div style={{height:s.height||40}} />;
     case 'kicker':
       return <div className="kicker" style={{marginBottom:8}}>{s.text}</div>;
+    case 'columns':
+      return (
+        <div style={{display:'grid',gridTemplateColumns:`repeat(${s.numCols||2},1fr)`,gap:s.gap||24,margin:'8px 0',alignItems:'start'}}>
+          {(s.cols||[]).map(col => (
+            <div key={col.id} style={{display:'flex',flexDirection:'column',gap:8}}>
+              {(col.blocks||[]).map(b => <ViewBlock key={b.id} block={b} />)}
+            </div>
+          ))}
+        </div>
+      );
     case 'card-grid':
       return (
         <div style={{display:'grid',gridTemplateColumns:`repeat(${s.columns||3},1fr)`,gap:s.gap||24,margin:'8px 0'}}>
@@ -170,6 +183,79 @@ function CardView({ card }) {
     );
   }
   return inner;
+}
+
+// ── ColEditor — editor de blocos dentro de uma coluna ───────────────────
+function ColEditor({ colIdx, total, blocks, onChange }) {
+  const [addOpen, setAddOpen] = React.useState(false);
+  const [expandedId, setExpandedId] = React.useState(null);
+
+  const addBlock = (type) => {
+    const nb = { id:'cb_'+Date.now()+'_'+Math.random().toString(36).slice(2,4), type, ...blockDefaults(type) };
+    onChange([...blocks, nb]);
+    setExpandedId(nb.id);
+    setAddOpen(false);
+  };
+
+  const updBlock  = (id, upd) => onChange(blocks.map(b => b.id===id ? upd : b));
+  const remBlock  = (id) => { onChange(blocks.filter(b => b.id!==id)); if(expandedId===id) setExpandedId(null); };
+  const moveBlock = (id, dir) => {
+    const i=blocks.findIndex(b=>b.id===id); if(i<0)return;
+    const next=[...blocks]; const sw=i+dir;
+    if(sw<0||sw>=next.length)return;
+    [next[i],next[sw]]=[next[sw],next[i]]; onChange(next);
+  };
+
+  return (
+    <div className="col-editor-slot">
+      <div className="col-editor-slot-header">
+        <span className="mono" style={{fontSize:'0.62rem',color:'var(--red)'}}>COLUNA {colIdx+1}/{total}</span>
+        <span className="mono" style={{fontSize:'0.6rem',color:'var(--muted)',marginLeft:8}}>{blocks.length} bloco{blocks.length!==1?'s':''}</span>
+      </div>
+
+      {blocks.map(block => {
+        const isExp = expandedId===block.id;
+        const meta  = COL_BLOCK_TYPES.find(t=>t.type===block.type)||{icon:'?',label:block.type};
+        return (
+          <div key={block.id} className={'bz-block bz-block-inner'+(isExp?' bz-block-open':'')}>
+            <div className="bz-block-bar" onClick={()=>setExpandedId(isExp?null:block.id)}>
+              <span className="bz-block-icon" style={{width:22,height:22}}>{meta.icon}</span>
+              <span className="bz-block-label">{meta.label}</span>
+              {block.text&&<span className="bz-block-preview">{String(block.text).slice(0,25)}</span>}
+              <div className="bz-block-actions" onClick={e=>e.stopPropagation()}>
+                <button className="edit-btn" style={{width:22,height:22}} onClick={()=>moveBlock(block.id,-1)}>↑</button>
+                <button className="edit-btn" style={{width:22,height:22}} onClick={()=>moveBlock(block.id, 1)}>↓</button>
+                <button className="edit-btn edit-btn-danger" style={{width:22,height:22}} onClick={()=>remBlock(block.id)}>✕</button>
+              </div>
+              <span className="bz-block-toggle">{isExp?'▲':'▼'}</span>
+            </div>
+            {isExp && (
+              <div className="bz-block-body">
+                <div className="bz-preview"><ViewBlock block={block} /></div>
+                <div className="bz-editor"><EditBlock block={block} onChange={u=>updBlock(block.id,u)} isInsideCard /></div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <button className="bz-add-trigger" style={{fontSize:'0.65rem',padding:'6px 10px',marginTop:4}} onClick={()=>setAddOpen(o=>!o)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="11" height="11"><path d="M12 5v14M5 12h14"/></svg>
+        {addOpen?'Fechar':'+ Bloco'}
+      </button>
+      {addOpen && (
+        <div className="bz-type-picker" style={{marginTop:4}}>
+          {COL_BLOCK_TYPES.map(t=>(
+            <button key={t.type} className="bz-type-card" onClick={()=>addBlock(t.type)}>
+              <span className="bz-type-icon">{t.icon}</span>
+              <span className="bz-type-name">{t.label}</span>
+              <span className="bz-type-desc">{t.desc}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── EditBlock ────────────────────────────────────────────────────────────
@@ -307,6 +393,49 @@ function EditBlock({ block, onChange, isInsideCard = false }) {
           </div>
         </div>
       );
+
+    case 'columns': {
+      const cols = block.cols || [];
+      const numCols = block.numCols || 2;
+      const updCols = (newCols) => set('cols', newCols);
+      const setNumCols = (n) => {
+        const next = [...cols];
+        while (next.length < n) next.push({ id:'col_'+Date.now()+'_'+Math.random().toString(36).slice(2,4), blocks:[] });
+        set('numCols', n);
+        set('cols', next.slice(0, n));
+      };
+      const updColBlocks = (colId, newBlocks) =>
+        updCols(cols.map(c => c.id===colId ? {...c,blocks:newBlocks} : c));
+
+      return (
+        <div className="bz-edit-fields">
+          <div className="bz-field-row">
+            <label>Número de colunas</label>
+            <div className="bz-chips">
+              {[2,3,4].map(n => (
+                <button key={n} className={'bz-chip'+(numCols===n?' active':'')} onClick={()=>setNumCols(n)}>{n} colunas</button>
+              ))}
+            </div>
+          </div>
+          <div className="bz-field-row">
+            <label>Espaçamento (px)</label>
+            <input className="bz-input" type="number" min={0} max={96} value={block.gap||24}
+              onChange={e=>set('gap',Number(e.target.value))} style={{width:70}} />
+          </div>
+          <div style={{borderTop:'1px solid var(--line)',paddingTop:10,marginTop:4}}>
+            {cols.slice(0,numCols).map((col,ci) => (
+              <ColEditor
+                key={col.id}
+                colIdx={ci}
+                total={numCols}
+                blocks={col.blocks||[]}
+                onChange={nb=>updColBlocks(col.id,nb)}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
 
     case 'card-grid': {
       const cards=block.cards||[];

@@ -1473,3 +1473,13 @@ span:hover > .editable-btn-trigger { opacity: 1; }
 .bz-block-inner { margin-bottom: 4px; background: rgba(255,255,255,0.02); }
 .bz-block-inner .bz-block-bar { padding: 5px 8px; }
 .bz-block-inner .bz-block-icon { width: 22px; height: 22px; font-size: 0.65rem; }
+
+/* ── ColEditor (colunas lado a lado) ────────────────────── */
+.col-editor-slot {
+  border: 1px solid rgba(225,6,0,0.25); padding: 10px;
+  margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px;
+}
+.col-editor-slot-header {
+  display: flex; align-items: center; padding-bottom: 6px;
+  border-bottom: 1px solid var(--line); margin-bottom: 6px;
+}
